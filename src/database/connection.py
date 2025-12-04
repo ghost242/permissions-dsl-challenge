@@ -86,8 +86,7 @@ class DatabaseConnection:
         check_same_thread = self.config.sqlite_path != ":memory:"
 
         self._connection = sqlite3.connect(
-            self.config.sqlite_path,
-            check_same_thread=check_same_thread
+            self.config.sqlite_path, check_same_thread=check_same_thread
         )
         self._connection.row_factory = sqlite3.Row  # Enable column access by name
 

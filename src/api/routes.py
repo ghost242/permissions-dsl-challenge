@@ -20,8 +20,10 @@ from src.models.policies import ResourcePolicyDocument
 # Response models
 # -------------------------------------------------------------------------
 
+
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     database: str
     version: str
@@ -30,6 +32,7 @@ class HealthResponse(BaseModel):
 
 class PolicyCreatedResponse(BaseModel):
     """Response when policy is created/updated."""
+
     message: str
     resourceId: str
     version: int = 1
@@ -37,6 +40,7 @@ class PolicyCreatedResponse(BaseModel):
 
 class PermissionCheckResponse(BaseModel):
     """Response for permission check."""
+
     allowed: bool
     message: str
     evaluation_details: Optional[dict] = None
@@ -44,6 +48,7 @@ class PermissionCheckResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response."""
+
     error: str
     message: str
     details: Optional[list[str]] = None
@@ -52,6 +57,7 @@ class ErrorResponse(BaseModel):
 # -------------------------------------------------------------------------
 # Dependency injection
 # -------------------------------------------------------------------------
+
 
 def get_repository() -> Repository:
     """Get repository instance.
@@ -74,11 +80,12 @@ router = APIRouter()
 # Health check endpoint
 # -------------------------------------------------------------------------
 
+
 @router.get(
     "/health",
     response_model=HealthResponse,
     summary="Service health check",
-    description="Check if API and database are operational"
+    description="Check if API and database are operational",
 )
 async def health_check():
     """Health check endpoint.
@@ -96,21 +103,22 @@ async def health_check():
             detail={
                 "status": "unhealthy",
                 "database": "disconnected",
-                "error": "Database connection failed"
-            }
+                "error": "Database connection failed",
+            },
         )
 
     return HealthResponse(
         status="healthy",
         database=db_status,
         version="1.0.0",
-        timestamp=datetime.utcnow().isoformat() + "Z"
+        timestamp=datetime.utcnow().isoformat() + "Z",
     )
 
 
 # -------------------------------------------------------------------------
 # Fetch resource policy endpoint
 # -------------------------------------------------------------------------
+
 
 @router.get(
     "/resource/policy",
@@ -122,15 +130,15 @@ async def health_check():
         400: {"description": "Invalid resourceId format", "model": ErrorResponse},
         404: {"description": "Resource policy not found", "model": ErrorResponse},
         500: {"description": "Internal server error", "model": ErrorResponse},
-    }
+    },
 )
 async def get_resource_policy(
     resourceId: str = Query(
         ...,
         description="Resource URN (e.g., urn:resource:team1:proj1:doc1)",
-        regex=r"^urn:resource:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$"
+        regex=r"^urn:resource:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$",
     ),
-    repository: Repository = Depends(get_repository)
+    repository: Repository = Depends(get_repository),
 ):
     """Fetch resource policy document.
 
@@ -154,8 +162,8 @@ async def get_resource_policy(
                 status_code=400,
                 detail={
                     "error": "VALIDATION_ERROR",
-                    "message": f"Invalid resourceId format. Expected: urn:resource:{{teamId}}:{{projectId}}:{{docId}}"
-                }
+                    "message": f"Invalid resourceId format. Expected: urn:resource:{{teamId}}:{{projectId}}:{{docId}}",
+                },
             )
 
         # Fetch policy from database
@@ -166,8 +174,8 @@ async def get_resource_policy(
                 status_code=404,
                 detail={
                     "error": "NOT_FOUND",
-                    "message": f"Resource policy not found for resourceId: {resourceId}"
-                }
+                    "message": f"Resource policy not found for resourceId: {resourceId}",
+                },
             )
 
         return policy_doc
@@ -179,14 +187,15 @@ async def get_resource_policy(
             status_code=500,
             detail={
                 "error": "INTERNAL_ERROR",
-                "message": "Failed to fetch resource policy"
-            }
+                "message": "Failed to fetch resource policy",
+            },
         )
 
 
 # -------------------------------------------------------------------------
 # Create/update resource policy endpoint
 # -------------------------------------------------------------------------
+
 
 @router.post(
     "/resource/policy",
@@ -198,14 +207,13 @@ async def get_resource_policy(
         201: {"description": "Policy created successfully"},
         400: {"description": "Invalid policy document", "model": ErrorResponse},
         500: {"description": "Failed to save policy", "model": ErrorResponse},
-    }
+    },
 )
 async def create_resource_policy(
     policy_input: Union[ResourcePolicyDocument, PolicyOptions] = Body(
-        ...,
-        description="Either a complete policy document or simple policy options"
+        ..., description="Either a complete policy document or simple policy options"
     ),
-    repository: Repository = Depends(get_repository)
+    repository: Repository = Depends(get_repository),
 ):
     """Create or update resource policy.
 
@@ -234,26 +242,28 @@ async def create_resource_policy(
         return PolicyCreatedResponse(
             message="Policy created successfully",
             resourceId=policy_doc.resource.resourceId,
-            version=1
+            version=1,
         )
 
     except HTTPException:
         raise
     except Exception as e:
         import logging
+
         logging.error(f"Failed to save policy: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
                 "error": "INTERNAL_ERROR",
-                "message": f"Failed to save policy to database: {str(e)}"
-            }
+                "message": f"Failed to save policy to database: {str(e)}",
+            },
         )
 
 
 # -------------------------------------------------------------------------
 # Permission check endpoint
 # -------------------------------------------------------------------------
+
 
 @router.get(
     "/permission-check",
@@ -264,26 +274,23 @@ async def create_resource_policy(
         200: {"description": "Permission evaluated successfully"},
         400: {"description": "Invalid parameters", "model": ErrorResponse},
         404: {"description": "Resource or user not found", "model": ErrorResponse},
-        500: {"description": "Internal error during evaluation", "model": ErrorResponse},
-    }
+        500: {
+            "description": "Internal error during evaluation",
+            "model": ErrorResponse,
+        },
+    },
 )
 async def check_permission(
     resourceId: str = Query(
-        ...,
-        description="Resource URN",
-        example="urn:resource:team1:proj1:doc1"
+        ..., description="Resource URN", example="urn:resource:team1:proj1:doc1"
     ),
-    userId: str = Query(
-        ...,
-        description="User ID",
-        example="user1"
-    ),
+    userId: str = Query(..., description="User ID", example="user1"),
     action: Permission = Query(
         ...,
         description="Permission to check (can_view, can_edit, can_delete, can_share)",
-        example="can_edit"
+        example="can_edit",
     ),
-    repository: Repository = Depends(get_repository)
+    repository: Repository = Depends(get_repository),
 ):
     """Evaluate permission for user on resource.
 
@@ -311,8 +318,8 @@ async def check_permission(
                 status_code=400,
                 detail={
                     "error": "VALIDATION_ERROR",
-                    "message": f"Invalid resourceId format"
-                }
+                    "message": f"Invalid resourceId format",
+                },
             )
 
         # Fetch required entities from database
@@ -322,8 +329,8 @@ async def check_permission(
                 status_code=404,
                 detail={
                     "error": "NOT_FOUND",
-                    "message": f"User not found for userId: {userId}"
-                }
+                    "message": f"User not found for userId: {userId}",
+                },
             )
 
         document = repository.get_document(doc_id)
@@ -332,8 +339,8 @@ async def check_permission(
                 status_code=404,
                 detail={
                     "error": "NOT_FOUND",
-                    "message": f"Document not found for resourceId: {resourceId}"
-                }
+                    "message": f"Document not found for resourceId: {resourceId}",
+                },
             )
 
         # Fetch policies
@@ -341,10 +348,7 @@ async def check_permission(
         if not resource_policy:
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": "NOT_FOUND",
-                    "message": "Resource policy not found"
-                }
+                detail={"error": "NOT_FOUND", "message": "Resource policy not found"},
             )
 
         user_policy = repository.get_user_policy(userId)
@@ -352,8 +356,12 @@ async def check_permission(
         # Fetch optional context entities
         team = repository.get_team(team_id)
         project = repository.get_project(project_id)
-        team_membership = repository.get_team_membership(userId, team_id) if team else None
-        project_membership = repository.get_project_membership(userId, project_id) if project else None
+        team_membership = (
+            repository.get_team_membership(userId, team_id) if team else None
+        )
+        project_membership = (
+            repository.get_project_membership(userId, project_id) if project else None
+        )
 
         # Evaluate permission
         result = evaluator.evaluate_permission(
@@ -376,8 +384,8 @@ async def check_permission(
             message=result.message,
             evaluation_details={
                 "matched_policies": result.matched_policies,
-                "evaluation_time_ms": eval_time_ms
-            }
+                "evaluation_time_ms": eval_time_ms,
+            },
         )
 
     except HTTPException:
@@ -387,6 +395,6 @@ async def check_permission(
             status_code=500,
             detail={
                 "error": "INTERNAL_ERROR",
-                "message": "Failed to evaluate permission"
-            }
+                "message": "Failed to evaluate permission",
+            },
         )

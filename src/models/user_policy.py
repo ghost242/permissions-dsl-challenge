@@ -11,17 +11,17 @@ from pydantic import BaseModel
 
 
 class Op(Enum):
-    field__ = '=='
-    field___1 = '!='
-    field_ = '>'
-    field___2 = '>='
-    field__1 = '<'
-    field___3 = '<='
-    field___4 = '<>'
-    in_ = 'in'
-    not_in = 'not in'
-    has = 'has'
-    has_not = 'has not'
+    field__ = "=="
+    field___1 = "!="
+    field_ = ">"
+    field___2 = ">="
+    field__1 = "<"
+    field___3 = "<="
+    field___4 = "<>"
+    in_ = "in"
+    not_in = "not in"
+    has = "has"
+    has_not = "has not"
 
 
 class Filter(BaseModel):
@@ -31,15 +31,15 @@ class Filter(BaseModel):
 
 
 class Permission(Enum):
-    can_view = 'can_view'
-    can_edit = 'can_edit'
-    can_delete = 'can_delete'
-    can_share = 'can_share'
+    can_view = "can_view"
+    can_edit = "can_edit"
+    can_delete = "can_delete"
+    can_share = "can_share"
 
 
 class Effect(Enum):
-    allow = 'allow'
-    deny = 'deny'
+    allow = "allow"
+    deny = "deny"
 
 
 class UserPolicy(BaseModel):

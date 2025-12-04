@@ -7,7 +7,14 @@ import pytest
 from datetime import datetime
 from src.components.evaluator import Evaluator, EvaluationResult
 from src.models.common import Permission, Effect, Filter, FilterOperator
-from src.models.entities import User, Document, Team, Project, TeamMembership, ProjectMembership
+from src.models.entities import (
+    User,
+    Document,
+    Team,
+    Project,
+    TeamMembership,
+    ProjectMembership,
+)
 from src.models.policies import ResourcePolicyDocument, ResourcePolicy, ResourceInfo
 
 
@@ -57,35 +64,37 @@ class TestPolicyPrecedence:
             projectId="proj1",
             creatorId="user2",
             deletedAt=None,
-            publicLinkEnabled=False
+            publicLinkEnabled=False,
         )
 
     def test_deny_policy_overrides_allow(self):
         """Test that DENY policy takes precedence over ALLOW."""
         # Create policies: one ALLOW, one DENY
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Allow all",
                     permissions=[Permission.CAN_VIEW, Permission.CAN_EDIT],
                     effect=Effect.ALLOW,
-                    filter=[]  # No filter, always matches
+                    filter=[],  # No filter, always matches
                 ),
                 ResourcePolicy(
                     description="Deny edit",
                     permissions=[Permission.CAN_EDIT],
                     effect=Effect.DENY,
-                    filter=[]  # No filter, always matches
-                )
-            ]
+                    filter=[],  # No filter, always matches
+                ),
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
             user=self.user,
             document=self.document,
             permission=Permission.CAN_EDIT,
-            resource_policy=policy_doc
+            resource_policy=policy_doc,
         )
 
         assert result.allowed is False  # DENY wins
@@ -94,22 +103,24 @@ class TestPolicyPrecedence:
     def test_allow_policy_grants_access(self):
         """Test that ALLOW policy grants access when no DENY."""
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Allow view",
                     permissions=[Permission.CAN_VIEW],
                     effect=Effect.ALLOW,
-                    filter=[]
+                    filter=[],
                 )
-            ]
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
             user=self.user,
             document=self.document,
             permission=Permission.CAN_VIEW,
-            resource_policy=policy_doc
+            resource_policy=policy_doc,
         )
 
         assert result.allowed is True
@@ -118,15 +129,17 @@ class TestPolicyPrecedence:
     def test_default_deny_when_no_policies(self):
         """Test default DENY when no policies match."""
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"),
-            policies=[]
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"
+            ),
+            policies=[],
         )
 
         result = self.evaluator.evaluate_permission(
             user=self.user,
             document=self.document,
             permission=Permission.CAN_VIEW,
-            resource_policy=policy_doc
+            resource_policy=policy_doc,
         )
 
         assert result.allowed is False
@@ -143,11 +156,22 @@ class TestContextBuilding:
     def test_build_context_with_all_entities(self):
         """Test building context with all entities."""
         user = User(id="user1", email="test@example.com", name="Test")
-        document = Document(id="doc1", title="Test", projectId="proj1", creatorId="user1", deletedAt=None, publicLinkEnabled=False)
+        document = Document(
+            id="doc1",
+            title="Test",
+            projectId="proj1",
+            creatorId="user1",
+            deletedAt=None,
+            publicLinkEnabled=False,
+        )
         team = Team(id="team1", name="Team", plan="pro")
-        project = Project(id="proj1", name="Project", teamId="team1", visibility="private")
+        project = Project(
+            id="proj1", name="Project", teamId="team1", visibility="private"
+        )
         team_membership = TeamMembership(userId="user1", teamId="team1", role="admin")
-        project_membership = ProjectMembership(userId="user1", projectId="proj1", role="editor")
+        project_membership = ProjectMembership(
+            userId="user1", projectId="proj1", role="editor"
+        )
 
         context = self.evaluator._build_context(
             user=user,
@@ -155,7 +179,7 @@ class TestContextBuilding:
             team=team,
             project=project,
             team_membership=team_membership,
-            project_membership=project_membership
+            project_membership=project_membership,
         )
 
         assert "user" in context
@@ -169,7 +193,14 @@ class TestContextBuilding:
     def test_build_context_with_minimal_entities(self):
         """Test building context with only required entities."""
         user = User(id="user1", email="test@example.com", name="Test")
-        document = Document(id="doc1", title="Test", projectId="proj1", creatorId="user1", deletedAt=None, publicLinkEnabled=False)
+        document = Document(
+            id="doc1",
+            title="Test",
+            projectId="proj1",
+            creatorId="user1",
+            deletedAt=None,
+            publicLinkEnabled=False,
+        )
 
         context = self.evaluator._build_context(user=user, document=document)
 
@@ -195,28 +226,34 @@ class TestPermissionEvaluation:
             projectId="proj1",
             creatorId="user1",
             deletedAt=None,
-            publicLinkEnabled=False
+            publicLinkEnabled=False,
         )
 
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Creator access",
                     permissions=[Permission.CAN_VIEW, Permission.CAN_EDIT],
                     effect=Effect.ALLOW,
                     filter=[
-                        Filter(prop="document.creatorId", op=FilterOperator.EQ, value="user.id")
-                    ]
+                        Filter(
+                            prop="document.creatorId",
+                            op=FilterOperator.EQ,
+                            value="user.id",
+                        )
+                    ],
                 )
-            ]
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
             user=user,
             document=document,
             permission=Permission.CAN_VIEW,
-            resource_policy=policy_doc
+            resource_policy=policy_doc,
         )
 
         assert result.allowed is True
@@ -230,28 +267,34 @@ class TestPermissionEvaluation:
             projectId="proj1",
             creatorId="user2",  # Different creator
             deletedAt=None,
-            publicLinkEnabled=False
+            publicLinkEnabled=False,
         )
 
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Creator only",
                     permissions=[Permission.CAN_VIEW],
                     effect=Effect.ALLOW,
                     filter=[
-                        Filter(prop="document.creatorId", op=FilterOperator.EQ, value="user.id")
-                    ]
+                        Filter(
+                            prop="document.creatorId",
+                            op=FilterOperator.EQ,
+                            value="user.id",
+                        )
+                    ],
                 )
-            ]
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
             user=user,
             document=document,
             permission=Permission.CAN_VIEW,
-            resource_policy=policy_doc
+            resource_policy=policy_doc,
         )
 
         assert result.allowed is False
@@ -265,26 +308,28 @@ class TestPermissionEvaluation:
             projectId="proj1",
             creatorId="user1",
             deletedAt=datetime(2025, 1, 1),  # Deleted
-            publicLinkEnabled=False
+            publicLinkEnabled=False,
         )
 
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Creator access",
                     permissions=[Permission.CAN_VIEW],
                     effect=Effect.ALLOW,
-                    filter=[]
+                    filter=[],
                 )
-            ]
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
             user=user,
             document=document,
             permission=Permission.CAN_VIEW,
-            resource_policy=policy_doc
+            resource_policy=policy_doc,
         )
 
         assert result.allowed is False
@@ -293,21 +338,34 @@ class TestPermissionEvaluation:
     def test_evaluate_permission_with_filter_match(self):
         """Test evaluation with matching filter."""
         user = User(id="user1", email="test@example.com", name="Test")
-        document = Document(id="doc1", title="Test", projectId="proj1", creatorId="user1", deletedAt=None, publicLinkEnabled=False)
+        document = Document(
+            id="doc1",
+            title="Test",
+            projectId="proj1",
+            creatorId="user1",
+            deletedAt=None,
+            publicLinkEnabled=False,
+        )
         team_membership = TeamMembership(userId="user1", teamId="team1", role="admin")
 
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Admin access",
                     permissions=[Permission.CAN_VIEW],
                     effect=Effect.ALLOW,
                     filter=[
-                        Filter(prop="teamMembership.role", op=FilterOperator.EQ, value="admin")
-                    ]
+                        Filter(
+                            prop="teamMembership.role",
+                            op=FilterOperator.EQ,
+                            value="admin",
+                        )
+                    ],
                 )
-            ]
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
@@ -315,7 +373,7 @@ class TestPermissionEvaluation:
             document=document,
             permission=Permission.CAN_VIEW,
             resource_policy=policy_doc,
-            team_membership=team_membership
+            team_membership=team_membership,
         )
 
         assert result.allowed is True
@@ -323,21 +381,34 @@ class TestPermissionEvaluation:
     def test_evaluate_permission_with_filter_no_match(self):
         """Test evaluation with non-matching filter."""
         user = User(id="user1", email="test@example.com", name="Test")
-        document = Document(id="doc1", title="Test", projectId="proj1", creatorId="user2", deletedAt=None, publicLinkEnabled=False)
+        document = Document(
+            id="doc1",
+            title="Test",
+            projectId="proj1",
+            creatorId="user2",
+            deletedAt=None,
+            publicLinkEnabled=False,
+        )
         team_membership = TeamMembership(userId="user1", teamId="team1", role="viewer")
 
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user2"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Admin only",
                     permissions=[Permission.CAN_VIEW],
                     effect=Effect.ALLOW,
                     filter=[
-                        Filter(prop="teamMembership.role", op=FilterOperator.EQ, value="admin")
-                    ]
+                        Filter(
+                            prop="teamMembership.role",
+                            op=FilterOperator.EQ,
+                            value="admin",
+                        )
+                    ],
                 )
-            ]
+            ],
         )
 
         result = self.evaluator.evaluate_permission(
@@ -345,7 +416,7 @@ class TestPermissionEvaluation:
             document=document,
             permission=Permission.CAN_VIEW,
             resource_policy=policy_doc,
-            team_membership=team_membership
+            team_membership=team_membership,
         )
 
         assert result.allowed is False

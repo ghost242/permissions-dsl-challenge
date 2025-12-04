@@ -7,7 +7,14 @@ whether a user has a specific permission on a resource.
 import re
 from typing import Dict, Any, Optional, Tuple
 from src.models.common import Permission, Effect
-from src.models.entities import User, Document, Team, Project, TeamMembership, ProjectMembership
+from src.models.entities import (
+    User,
+    Document,
+    Team,
+    Project,
+    TeamMembership,
+    ProjectMembership,
+)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 from src.components.filter_engine import FilterEngine
 
@@ -15,7 +22,9 @@ from src.components.filter_engine import FilterEngine
 class EvaluationResult:
     """Result of a permission evaluation."""
 
-    def __init__(self, allowed: bool, message: str, matched_policies: Optional[list[str]] = None):
+    def __init__(
+        self, allowed: bool, message: str, matched_policies: Optional[list[str]] = None
+    ):
         self.allowed = allowed
         self.message = message
         self.matched_policies = matched_policies or []
@@ -63,9 +72,7 @@ class Evaluator:
         # Check if document is deleted
         if document.is_deleted:
             return EvaluationResult(
-                allowed=False,
-                message="Deny: Document is deleted",
-                matched_policies=[]
+                allowed=False, message="Deny: Document is deleted", matched_policies=[]
             )
 
         # Build evaluation context
@@ -124,24 +131,18 @@ class Evaluator:
         # 1. If any DENY policy matched, deny access
         if all_deny_policies:
             return EvaluationResult(
-                allowed=False,
-                message="Deny",
-                matched_policies=all_deny_policies
+                allowed=False, message="Deny", matched_policies=all_deny_policies
             )
 
         # 2. If any ALLOW policy matched, allow access
         if all_allow_policies:
             return EvaluationResult(
-                allowed=True,
-                message="Allow",
-                matched_policies=all_allow_policies
+                allowed=True, message="Allow", matched_policies=all_allow_policies
             )
 
         # 3. Default deny (no matching policies)
         return EvaluationResult(
-            allowed=False,
-            message="Deny: No matching policy found",
-            matched_policies=[]
+            allowed=False, message="Deny: No matching policy found", matched_policies=[]
         )
 
     def _build_context(
@@ -186,7 +187,9 @@ class Evaluator:
         return context
 
     @staticmethod
-    def extract_urn_components(resource_urn: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    def extract_urn_components(
+        resource_urn: str,
+    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract teamId, projectId, and docId from resource URN.
 
         Expected format: urn:resource:{teamId}:{projectId}:{docId}

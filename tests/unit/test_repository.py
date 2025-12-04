@@ -16,7 +16,7 @@ class TestUserOperations:
         cursor = test_db.get_connection().cursor()
         cursor.execute(
             "INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
-            ("user1", "test@example.com", "Test User")
+            ("user1", "test@example.com", "Test User"),
         )
         test_db.commit()
 
@@ -38,12 +38,21 @@ class TestDocumentOperations:
         """Test getting existing document."""
         # Setup: Insert user, team, project first
         cursor = test_db.get_connection().cursor()
-        cursor.execute("INSERT INTO users (id, email, name) VALUES (?, ?, ?)", ("user1", "test@example.com", "Test"))
-        cursor.execute("INSERT INTO teams (id, name, plan) VALUES (?, ?, ?)", ("team1", "Team", "pro"))
-        cursor.execute("INSERT INTO projects (id, name, team_id, visibility) VALUES (?, ?, ?, ?)", ("proj1", "Project", "team1", "private"))
+        cursor.execute(
+            "INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
+            ("user1", "test@example.com", "Test"),
+        )
+        cursor.execute(
+            "INSERT INTO teams (id, name, plan) VALUES (?, ?, ?)",
+            ("team1", "Team", "pro"),
+        )
+        cursor.execute(
+            "INSERT INTO projects (id, name, team_id, visibility) VALUES (?, ?, ?, ?)",
+            ("proj1", "Project", "team1", "private"),
+        )
         cursor.execute(
             "INSERT INTO documents (id, title, project_id, creator_id, deleted_at, public_link_enabled) VALUES (?, ?, ?, ?, ?, ?)",
-            ("doc1", "Test Doc", "proj1", "user1", None, False)
+            ("doc1", "Test Doc", "proj1", "user1", None, False),
         )
         test_db.commit()
 
@@ -55,12 +64,21 @@ class TestDocumentOperations:
     def test_get_document_with_soft_delete(self, test_db, repository):
         """Test getting soft-deleted document."""
         cursor = test_db.get_connection().cursor()
-        cursor.execute("INSERT INTO users (id, email, name) VALUES (?, ?, ?)", ("user1", "test@example.com", "Test"))
-        cursor.execute("INSERT INTO teams (id, name, plan) VALUES (?, ?, ?)", ("team1", "Team", "pro"))
-        cursor.execute("INSERT INTO projects (id, name, team_id, visibility) VALUES (?, ?, ?, ?)", ("proj1", "Project", "team1", "private"))
+        cursor.execute(
+            "INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
+            ("user1", "test@example.com", "Test"),
+        )
+        cursor.execute(
+            "INSERT INTO teams (id, name, plan) VALUES (?, ?, ?)",
+            ("team1", "Team", "pro"),
+        )
+        cursor.execute(
+            "INSERT INTO projects (id, name, team_id, visibility) VALUES (?, ?, ?, ?)",
+            ("proj1", "Project", "team1", "private"),
+        )
         cursor.execute(
             "INSERT INTO documents (id, title, project_id, creator_id, deleted_at, public_link_enabled) VALUES (?, ?, ?, ?, ?, ?)",
-            ("doc1", "Deleted Doc", "proj1", "user1", "2025-01-01 00:00:00", False)
+            ("doc1", "Deleted Doc", "proj1", "user1", "2025-01-01 00:00:00", False),
         )
         test_db.commit()
 
@@ -76,15 +94,17 @@ class TestPolicyOperations:
     def test_save_and_get_resource_policy(self, test_db, repository):
         """Test saving and retrieving resource policy."""
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"),
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"
+            ),
             policies=[
                 ResourcePolicy(
                     description="Test policy",
                     permissions=[Permission.CAN_VIEW],
                     effect=Effect.ALLOW,
-                    filter=[]
+                    filter=[],
                 )
-            ]
+            ],
         )
 
         # Save
@@ -105,8 +125,17 @@ class TestPolicyOperations:
     def test_save_resource_policy_update(self, test_db, repository):
         """Test updating existing policy."""
         policy_doc = ResourcePolicyDocument(
-            resource=ResourceInfo(resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"),
-            policies=[ResourcePolicy(description="V1", permissions=[Permission.CAN_VIEW], effect=Effect.ALLOW, filter=[])]
+            resource=ResourceInfo(
+                resourceId="urn:resource:team1:proj1:doc1", creatorId="user1"
+            ),
+            policies=[
+                ResourcePolicy(
+                    description="V1",
+                    permissions=[Permission.CAN_VIEW],
+                    effect=Effect.ALLOW,
+                    filter=[],
+                )
+            ],
         )
 
         # Save first version
@@ -114,7 +143,12 @@ class TestPolicyOperations:
 
         # Update with new version
         policy_doc.policies.append(
-            ResourcePolicy(description="V2", permissions=[Permission.CAN_EDIT], effect=Effect.ALLOW, filter=[])
+            ResourcePolicy(
+                description="V2",
+                permissions=[Permission.CAN_EDIT],
+                effect=Effect.ALLOW,
+                filter=[],
+            )
         )
         repository.save_resource_policy(policy_doc)
 

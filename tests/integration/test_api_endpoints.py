@@ -31,8 +31,8 @@ class TestPolicyEndpoints:
             json={
                 "resourceId": "urn:resource:team1:proj1:doc1",
                 "action": "can_edit",
-                "target": "user123"
-            }
+                "target": "user123",
+            },
         )
 
         assert response.status_code == 201
@@ -45,7 +45,7 @@ class TestPolicyEndpoints:
         policy_doc = {
             "resource": {
                 "resourceId": "urn:resource:team1:proj1:doc2",
-                "creatorId": "user1"
+                "creatorId": "user1",
             },
             "policies": [
                 {
@@ -54,9 +54,9 @@ class TestPolicyEndpoints:
                     "effect": "allow",
                     "filter": [
                         {"prop": "document.creatorId", "op": "==", "value": "user.id"}
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         response = test_client.post("/api/v1/resource/policy", json=policy_doc)
@@ -67,13 +67,17 @@ class TestPolicyEndpoints:
         # First create a policy
         test_client.post(
             "/api/v1/resource/policy",
-            json={"resourceId": "urn:resource:team1:proj1:doc3", "action": "can_view", "target": "user1"}
+            json={
+                "resourceId": "urn:resource:team1:proj1:doc3",
+                "action": "can_view",
+                "target": "user1",
+            },
         )
 
         # Then retrieve it
         response = test_client.get(
             "/api/v1/resource/policy",
-            params={"resourceId": "urn:resource:team1:proj1:doc3"}
+            params={"resourceId": "urn:resource:team1:proj1:doc3"},
         )
 
         assert response.status_code == 200
@@ -85,7 +89,7 @@ class TestPolicyEndpoints:
         """Test getting non-existent policy."""
         response = test_client.get(
             "/api/v1/resource/policy",
-            params={"resourceId": "urn:resource:nonexistent:nonexistent:nonexistent"}
+            params={"resourceId": "urn:resource:nonexistent:nonexistent:nonexistent"},
         )
 
         assert response.status_code == 404
@@ -93,8 +97,7 @@ class TestPolicyEndpoints:
     def test_get_policy_invalid_urn(self, test_client):
         """Test getting policy with invalid URN format."""
         response = test_client.get(
-            "/api/v1/resource/policy",
-            params={"resourceId": "invalid-urn"}
+            "/api/v1/resource/policy", params={"resourceId": "invalid-urn"}
         )
 
         # FastAPI returns 422 for query parameter validation errors
@@ -109,27 +112,54 @@ class TestPermissionCheckEndpoint:
         cursor = test_client.test_db.get_connection().cursor()
 
         # Insert entities
-        cursor.execute("INSERT INTO users (id, email, name) VALUES (?, ?, ?)", ("user1", "test@example.com", "Test User"))
-        cursor.execute("INSERT INTO teams (id, name, plan) VALUES (?, ?, ?)", ("team1", "Test Team", "pro"))
-        cursor.execute("INSERT INTO projects (id, name, team_id, visibility) VALUES (?, ?, ?, ?)", ("proj1", "Test Project", "team1", "private"))
+        cursor.execute(
+            "INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
+            ("user1", "test@example.com", "Test User"),
+        )
+        cursor.execute(
+            "INSERT INTO teams (id, name, plan) VALUES (?, ?, ?)",
+            ("team1", "Test Team", "pro"),
+        )
+        cursor.execute(
+            "INSERT INTO projects (id, name, team_id, visibility) VALUES (?, ?, ?, ?)",
+            ("proj1", "Test Project", "team1", "private"),
+        )
         cursor.execute(
             "INSERT INTO documents (id, title, project_id, creator_id, deleted_at, public_link_enabled) VALUES (?, ?, ?, ?, ?, ?)",
-            ("doc1", "Test Doc", "proj1", "user1", None, 0)
+            ("doc1", "Test Doc", "proj1", "user1", None, 0),
         )
 
         # Insert policy
-        policy_json = json.dumps({
-            "resource": {"resourceId": "urn:resource:team1:proj1:doc1", "creatorId": "user1"},
-            "policies": [{
-                "description": "Creator has full access",
-                "permissions": ["can_view", "can_edit", "can_delete", "can_share"],
-                "effect": "allow",
-                "filter": [{"prop": "document.creatorId", "op": "==", "value": "user.id"}]
-            }]
-        })
+        policy_json = json.dumps(
+            {
+                "resource": {
+                    "resourceId": "urn:resource:team1:proj1:doc1",
+                    "creatorId": "user1",
+                },
+                "policies": [
+                    {
+                        "description": "Creator has full access",
+                        "permissions": [
+                            "can_view",
+                            "can_edit",
+                            "can_delete",
+                            "can_share",
+                        ],
+                        "effect": "allow",
+                        "filter": [
+                            {
+                                "prop": "document.creatorId",
+                                "op": "==",
+                                "value": "user.id",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
         cursor.execute(
             "INSERT INTO resource_policies (resource_id, policy_document) VALUES (?, ?)",
-            ("urn:resource:team1:proj1:doc1", policy_json)
+            ("urn:resource:team1:proj1:doc1", policy_json),
         )
 
         test_client.test_db.commit()
@@ -143,8 +173,8 @@ class TestPermissionCheckEndpoint:
             params={
                 "resourceId": "urn:resource:team1:proj1:doc1",
                 "userId": "user1",
-                "action": "can_view"
-            }
+                "action": "can_view",
+            },
         )
 
         assert response.status_code == 200
@@ -158,7 +188,10 @@ class TestPermissionCheckEndpoint:
 
         # Insert another user who is not the creator
         cursor = test_client.test_db.get_connection().cursor()
-        cursor.execute("INSERT INTO users (id, email, name) VALUES (?, ?, ?)", ("user2", "other@example.com", "Other User"))
+        cursor.execute(
+            "INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
+            ("user2", "other@example.com", "Other User"),
+        )
         test_client.test_db.commit()
 
         response = test_client.get(
@@ -166,8 +199,8 @@ class TestPermissionCheckEndpoint:
             params={
                 "resourceId": "urn:resource:team1:proj1:doc1",
                 "userId": "user2",  # Different user
-                "action": "can_view"
-            }
+                "action": "can_view",
+            },
         )
 
         assert response.status_code == 200
@@ -183,8 +216,8 @@ class TestPermissionCheckEndpoint:
             params={
                 "resourceId": "urn:resource:team1:proj1:doc1",
                 "userId": "nonexistent",
-                "action": "can_view"
-            }
+                "action": "can_view",
+            },
         )
 
         assert response.status_code == 404
@@ -198,8 +231,8 @@ class TestPermissionCheckEndpoint:
             params={
                 "resourceId": "urn:resource:team1:proj1:doc1",
                 "userId": "user1",
-                "action": "invalid_action"
-            }
+                "action": "invalid_action",
+            },
         )
 
         assert response.status_code == 422  # Validation error

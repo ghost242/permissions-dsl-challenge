@@ -11,7 +11,9 @@ from src.models.common import Filter, FilterOperator
 class FilterEngine:
     """Engine for evaluating filter conditions against context objects."""
 
-    def evaluate_filter(self, filter_condition: Filter, context: Dict[str, Any]) -> bool:
+    def evaluate_filter(
+        self, filter_condition: Filter, context: Dict[str, Any]
+    ) -> bool:
         """Evaluate a single filter condition against the provided context.
 
         Args:
@@ -36,11 +38,7 @@ class FilterEngine:
         comparison_value = self._resolve_value(filter_condition.value, context)
 
         # Evaluate based on operator
-        return self._apply_operator(
-            prop_value,
-            filter_condition.op,
-            comparison_value
-        )
+        return self._apply_operator(prop_value, filter_condition.op, comparison_value)
 
     def evaluate_filters(self, filters: list[Filter], context: Dict[str, Any]) -> bool:
         """Evaluate multiple filter conditions (AND logic).

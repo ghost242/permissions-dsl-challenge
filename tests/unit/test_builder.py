@@ -18,7 +18,7 @@ class TestPolicyBuilding:
         options = PolicyOptions(
             resourceId="urn:resource:team1:proj1:doc1",
             action=Permission.CAN_EDIT,
-            target="user123"
+            target="user123",
         )
 
         result = self.builder.build_policy_document(options, creator_id="creator1")
@@ -32,8 +32,11 @@ class TestPolicyBuilding:
     def test_build_from_full_document(self):
         """Test that full documents pass through unchanged."""
         doc = ResourcePolicyDocument(
-            resource={"resourceId": "urn:resource:team1:proj1:doc1", "creatorId": "user1"},
-            policies=[]
+            resource={
+                "resourceId": "urn:resource:team1:proj1:doc1",
+                "creatorId": "user1",
+            },
+            policies=[],
         )
 
         result = self.builder.build_policy_document(doc)
@@ -41,7 +44,9 @@ class TestPolicyBuilding:
 
     def test_create_creator_policy(self):
         """Test creating default creator policy."""
-        policy_doc = self.builder.create_creator_policy("urn:resource:team1:proj1:doc1", "user1")
+        policy_doc = self.builder.create_creator_policy(
+            "urn:resource:team1:proj1:doc1", "user1"
+        )
 
         assert len(policy_doc.policies) == 1
         policy = policy_doc.policies[0]
@@ -53,7 +58,9 @@ class TestPolicyBuilding:
 
     def test_create_team_admin_policy(self):
         """Test creating team admin policy."""
-        policy_doc = self.builder.create_team_admin_policy("urn:resource:team1:proj1:doc1", "user1")
+        policy_doc = self.builder.create_team_admin_policy(
+            "urn:resource:team1:proj1:doc1", "user1"
+        )
 
         policy = policy_doc.policies[0]
         assert "admin" in policy.description.lower()
@@ -61,7 +68,9 @@ class TestPolicyBuilding:
 
     def test_create_public_view_policy(self):
         """Test creating public view policy."""
-        policy_doc = self.builder.create_public_view_policy("urn:resource:team1:proj1:doc1", "user1")
+        policy_doc = self.builder.create_public_view_policy(
+            "urn:resource:team1:proj1:doc1", "user1"
+        )
 
         policy = policy_doc.policies[0]
         assert Permission.CAN_VIEW in policy.permissions

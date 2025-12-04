@@ -7,7 +7,14 @@ import json
 from typing import Optional, Dict, Any
 from datetime import datetime
 from src.database.connection import DatabaseConnection
-from src.models.entities import User, Team, Project, Document, TeamMembership, ProjectMembership
+from src.models.entities import (
+    User,
+    Team,
+    Project,
+    Document,
+    TeamMembership,
+    ProjectMembership,
+)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 
@@ -33,10 +40,7 @@ class Repository:
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT id, email, name FROM users WHERE id = ?",
-            (user_id,)
-        )
+        cursor.execute("SELECT id, email, name FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
 
         if not row:
@@ -64,10 +68,7 @@ class Repository:
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT id, name, plan FROM teams WHERE id = ?",
-            (team_id,)
-        )
+        cursor.execute("SELECT id, name, plan FROM teams WHERE id = ?", (team_id,))
         row = cursor.fetchone()
 
         if not row:
@@ -97,7 +98,7 @@ class Repository:
 
         cursor.execute(
             "SELECT id, name, team_id, visibility FROM projects WHERE id = ?",
-            (project_id,)
+            (project_id,),
         )
         row = cursor.fetchone()
 
@@ -133,7 +134,7 @@ class Repository:
             FROM documents
             WHERE id = ?
             """,
-            (document_id,)
+            (document_id,),
         )
         row = cursor.fetchone()
 
@@ -143,7 +144,11 @@ class Repository:
         deleted_at = None
         deleted_at_raw = row["deleted_at"] if isinstance(row, dict) else row[4]
         if deleted_at_raw:
-            deleted_at = datetime.fromisoformat(deleted_at_raw) if isinstance(deleted_at_raw, str) else deleted_at_raw
+            deleted_at = (
+                datetime.fromisoformat(deleted_at_raw)
+                if isinstance(deleted_at_raw, str)
+                else deleted_at_raw
+            )
 
         return Document(
             id=row["id"] if isinstance(row, dict) else row[0],
@@ -151,14 +156,18 @@ class Repository:
             projectId=row["project_id"] if isinstance(row, dict) else row[2],
             creatorId=row["creator_id"] if isinstance(row, dict) else row[3],
             deletedAt=deleted_at,
-            publicLinkEnabled=bool(row["public_link_enabled"] if isinstance(row, dict) else row[5]),
+            publicLinkEnabled=bool(
+                row["public_link_enabled"] if isinstance(row, dict) else row[5]
+            ),
         )
 
     # -------------------------------------------------------------------------
     # Membership operations
     # -------------------------------------------------------------------------
 
-    def get_team_membership(self, user_id: str, team_id: str) -> Optional[TeamMembership]:
+    def get_team_membership(
+        self, user_id: str, team_id: str
+    ) -> Optional[TeamMembership]:
         """Get team membership for a user.
 
         Args:
@@ -173,7 +182,7 @@ class Repository:
 
         cursor.execute(
             "SELECT user_id, team_id, role FROM team_memberships WHERE user_id = ? AND team_id = ?",
-            (user_id, team_id)
+            (user_id, team_id),
         )
         row = cursor.fetchone()
 
@@ -186,7 +195,9 @@ class Repository:
             role=row["role"] if isinstance(row, dict) else row[2],
         )
 
-    def get_project_membership(self, user_id: str, project_id: str) -> Optional[ProjectMembership]:
+    def get_project_membership(
+        self, user_id: str, project_id: str
+    ) -> Optional[ProjectMembership]:
         """Get project membership for a user.
 
         Args:
@@ -201,7 +212,7 @@ class Repository:
 
         cursor.execute(
             "SELECT user_id, project_id, role FROM project_memberships WHERE user_id = ? AND project_id = ?",
-            (user_id, project_id)
+            (user_id, project_id),
         )
         row = cursor.fetchone()
 
@@ -232,7 +243,7 @@ class Repository:
 
         cursor.execute(
             "SELECT resource_id, policy_document FROM resource_policies WHERE resource_id = ?",
-            (resource_id,)
+            (resource_id,),
         )
         row = cursor.fetchone()
 
@@ -267,7 +278,7 @@ class Repository:
         # Check if policy exists
         cursor.execute(
             "SELECT resource_id FROM resource_policies WHERE resource_id = ?",
-            (policy_doc.resource.resourceId,)
+            (policy_doc.resource.resourceId,),
         )
         exists = cursor.fetchone() is not None
 
@@ -279,7 +290,7 @@ class Repository:
                 SET policy_document = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE resource_id = ?
                 """,
-                (policy_json, policy_doc.resource.resourceId)
+                (policy_json, policy_doc.resource.resourceId),
             )
         else:
             # Insert new policy
@@ -288,7 +299,7 @@ class Repository:
                 INSERT INTO resource_policies (resource_id, policy_document, created_at, updated_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
-                (policy_doc.resource.resourceId, policy_json)
+                (policy_doc.resource.resourceId, policy_json),
             )
 
         self.db.commit()
@@ -308,7 +319,7 @@ class Repository:
 
         cursor.execute(
             "SELECT user_id, policy_document FROM user_policies WHERE user_id = ?",
-            (user_id,)
+            (user_id,),
         )
         row = cursor.fetchone()
 
@@ -343,8 +354,7 @@ class Repository:
 
         # Check if policy exists
         cursor.execute(
-            "SELECT user_id FROM user_policies WHERE user_id = ?",
-            (user_id,)
+            "SELECT user_id FROM user_policies WHERE user_id = ?", (user_id,)
         )
         exists = cursor.fetchone() is not None
 
@@ -356,7 +366,7 @@ class Repository:
                 SET policy_document = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = ?
                 """,
-                (policy_json, user_id)
+                (policy_json, user_id),
             )
         else:
             # Insert new policy
@@ -365,7 +375,7 @@ class Repository:
                 INSERT INTO user_policies (user_id, policy_document, created_at, updated_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
-                (user_id, policy_json)
+                (user_id, policy_json),
             )
 
         self.db.commit()

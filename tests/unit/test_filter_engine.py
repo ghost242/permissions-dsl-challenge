@@ -80,38 +80,50 @@ class TestFilterOperators:
     # Null checks
     def test_operator_ne_null_with_non_null_value(self):
         """Test <> (not null) operator with non-null value."""
-        filter_cond = Filter(prop="document.deletedAt", op=FilterOperator.NE_NULL, value=None)
+        filter_cond = Filter(
+            prop="document.deletedAt", op=FilterOperator.NE_NULL, value=None
+        )
         context = {"document": {"deletedAt": "2025-01-01"}}
         assert self.engine.evaluate_filter(filter_cond, context) is True
 
     def test_operator_ne_null_with_null_value(self):
         """Test <> (not null) operator with null value."""
-        filter_cond = Filter(prop="document.deletedAt", op=FilterOperator.NE_NULL, value=None)
+        filter_cond = Filter(
+            prop="document.deletedAt", op=FilterOperator.NE_NULL, value=None
+        )
         context = {"document": {"deletedAt": None}}
         assert self.engine.evaluate_filter(filter_cond, context) is False
 
     # List operators
     def test_operator_in_with_value_in_list(self):
         """Test 'in' operator with value in list."""
-        filter_cond = Filter(prop="user.role", op=FilterOperator.IN, value=["admin", "editor"])
+        filter_cond = Filter(
+            prop="user.role", op=FilterOperator.IN, value=["admin", "editor"]
+        )
         context = {"user": {"role": "admin"}}
         assert self.engine.evaluate_filter(filter_cond, context) is True
 
     def test_operator_in_with_value_not_in_list(self):
         """Test 'in' operator with value not in list."""
-        filter_cond = Filter(prop="user.role", op=FilterOperator.IN, value=["admin", "editor"])
+        filter_cond = Filter(
+            prop="user.role", op=FilterOperator.IN, value=["admin", "editor"]
+        )
         context = {"user": {"role": "viewer"}}
         assert self.engine.evaluate_filter(filter_cond, context) is False
 
     def test_operator_not_in_with_value_in_list(self):
         """Test 'not in' operator with value in list."""
-        filter_cond = Filter(prop="user.role", op=FilterOperator.NOT_IN, value=["admin", "editor"])
+        filter_cond = Filter(
+            prop="user.role", op=FilterOperator.NOT_IN, value=["admin", "editor"]
+        )
         context = {"user": {"role": "admin"}}
         assert self.engine.evaluate_filter(filter_cond, context) is False
 
     def test_operator_not_in_with_value_not_in_list(self):
         """Test 'not in' operator with value not in list."""
-        filter_cond = Filter(prop="user.role", op=FilterOperator.NOT_IN, value=["admin", "editor"])
+        filter_cond = Filter(
+            prop="user.role", op=FilterOperator.NOT_IN, value=["admin", "editor"]
+        )
         context = {"user": {"role": "viewer"}}
         assert self.engine.evaluate_filter(filter_cond, context) is True
 
@@ -130,13 +142,17 @@ class TestFilterOperators:
 
     def test_operator_has_not_substring_match(self):
         """Test 'has not' operator with substring match."""
-        filter_cond = Filter(prop="document.title", op=FilterOperator.HAS_NOT, value="test")
+        filter_cond = Filter(
+            prop="document.title", op=FilterOperator.HAS_NOT, value="test"
+        )
         context = {"document": {"title": "This is a test document"}}
         assert self.engine.evaluate_filter(filter_cond, context) is False
 
     def test_operator_has_not_substring_no_match(self):
         """Test 'has not' operator with no substring match."""
-        filter_cond = Filter(prop="document.title", op=FilterOperator.HAS_NOT, value="xyz")
+        filter_cond = Filter(
+            prop="document.title", op=FilterOperator.HAS_NOT, value="xyz"
+        )
         context = {"document": {"title": "This is a test document"}}
         assert self.engine.evaluate_filter(filter_cond, context) is True
 
@@ -169,6 +185,7 @@ class TestPropertyResolution:
     def test_resolve_property_from_model(self):
         """Test resolving property from Pydantic model."""
         from src.models.entities import User
+
         user = User(id="user1", email="test@example.com", name="Test")
         context = {"user": user}
         result = self.engine._resolve_property("user.email", context)
@@ -215,13 +232,17 @@ class TestFilterEvaluation:
 
     def test_evaluate_single_filter_pass(self):
         """Test evaluating single filter that passes."""
-        filter_cond = Filter(prop="document.creatorId", op=FilterOperator.EQ, value="user.id")
+        filter_cond = Filter(
+            prop="document.creatorId", op=FilterOperator.EQ, value="user.id"
+        )
         context = {"user": {"id": "user1"}, "document": {"creatorId": "user1"}}
         assert self.engine.evaluate_filter(filter_cond, context) is True
 
     def test_evaluate_single_filter_fail(self):
         """Test evaluating single filter that fails."""
-        filter_cond = Filter(prop="document.creatorId", op=FilterOperator.EQ, value="user.id")
+        filter_cond = Filter(
+            prop="document.creatorId", op=FilterOperator.EQ, value="user.id"
+        )
         context = {"user": {"id": "user1"}, "document": {"creatorId": "user2"}}
         assert self.engine.evaluate_filter(filter_cond, context) is False
 
@@ -229,7 +250,7 @@ class TestFilterEvaluation:
         """Test evaluating multiple filters (AND logic) - all pass."""
         filters = [
             Filter(prop="user.role", op=FilterOperator.EQ, value="admin"),
-            Filter(prop="user.age", op=FilterOperator.GTE, value=18)
+            Filter(prop="user.age", op=FilterOperator.GTE, value=18),
         ]
         context = {"user": {"role": "admin", "age": 25}}
         assert self.engine.evaluate_filters(filters, context) is True
@@ -238,7 +259,7 @@ class TestFilterEvaluation:
         """Test evaluating multiple filters (AND logic) - one fails."""
         filters = [
             Filter(prop="user.role", op=FilterOperator.EQ, value="admin"),
-            Filter(prop="user.age", op=FilterOperator.GTE, value=18)
+            Filter(prop="user.age", op=FilterOperator.GTE, value=18),
         ]
         context = {"user": {"role": "admin", "age": 15}}
         assert self.engine.evaluate_filters(filters, context) is False
@@ -263,7 +284,9 @@ class TestEdgeCases:
 
     def test_type_mismatch_in_comparison(self):
         """Test comparison with type mismatch."""
-        filter_cond = Filter(prop="user.age", op=FilterOperator.GT, value="not a number")
+        filter_cond = Filter(
+            prop="user.age", op=FilterOperator.GT, value="not a number"
+        )
         context = {"user": {"age": 25}}
         # Should handle gracefully and return False
         assert self.engine.evaluate_filter(filter_cond, context) is False

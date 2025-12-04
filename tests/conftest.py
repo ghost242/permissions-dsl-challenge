@@ -111,21 +111,13 @@ def test_client(monkeypatch):
 @pytest.fixture
 def sample_user():
     """Sample user data for testing."""
-    return {
-        "id": "user1",
-        "email": "test@example.com",
-        "name": "Test User"
-    }
+    return {"id": "user1", "email": "test@example.com", "name": "Test User"}
 
 
 @pytest.fixture
 def sample_team():
     """Sample team data for testing."""
-    return {
-        "id": "team1",
-        "name": "Test Team",
-        "plan": "pro"
-    }
+    return {"id": "team1", "name": "Test Team", "plan": "pro"}
 
 
 @pytest.fixture
@@ -135,7 +127,7 @@ def sample_project(sample_team):
         "id": "proj1",
         "name": "Test Project",
         "teamId": sample_team["id"],
-        "visibility": "private"
+        "visibility": "private",
     }
 
 
@@ -148,5 +140,5 @@ def sample_document(sample_project, sample_user):
         "projectId": sample_project["id"],
         "creatorId": sample_user["id"],
         "deletedAt": None,
-        "publicLinkEnabled": False
+        "publicLinkEnabled": False,
     }

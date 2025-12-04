@@ -11,37 +11,37 @@ from pydantic import BaseModel, Field, constr
 
 
 class Resource(BaseModel):
-    resourceId: constr(pattern=r'^urn:resource(:[a-zA-Z0-9]+){3}$') = Field(
+    resourceId: constr(pattern=r"^urn:resource(:[a-zA-Z0-9]+){3}$") = Field(
         ...,
-        description='Representation resource name followed by URN(urn:resource:{teamId}:{projectId}:{documentId})',
+        description="Representation resource name followed by URN(urn:resource:{teamId}:{projectId}:{documentId})",
     )
     creatorId: str
 
 
 class Permission(Enum):
-    can_view = 'can_view'
-    can_edit = 'can_edit'
-    can_delete = 'can_delete'
-    can_share = 'can_share'
+    can_view = "can_view"
+    can_edit = "can_edit"
+    can_delete = "can_delete"
+    can_share = "can_share"
 
 
 class Effect(Enum):
-    allow = 'allow'
-    deny = 'deny'
+    allow = "allow"
+    deny = "deny"
 
 
 class Op(Enum):
-    field__ = '=='
-    field___1 = '!='
-    field_ = '>'
-    field___2 = '>='
-    field__1 = '<'
-    field___3 = '<='
-    field___4 = '<>'
-    in_ = 'in'
-    not_in = 'not in'
-    has = 'has'
-    has_not = 'has not'
+    field__ = "=="
+    field___1 = "!="
+    field_ = ">"
+    field___2 = ">="
+    field__1 = "<"
+    field___3 = "<="
+    field___4 = "<>"
+    in_ = "in"
+    not_in = "not in"
+    has = "has"
+    has_not = "has not"
 
 
 class FilterItem(BaseModel):

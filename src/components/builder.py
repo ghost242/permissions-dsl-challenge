@@ -15,10 +15,18 @@ class PolicyOptions(BaseModel):
 
     This allows users to create policies without writing full policy documents.
     """
-    resourceId: str = Field(..., description="Resource URN (e.g., urn:resource:team1:proj1:doc1)")
-    action: Permission = Field(..., description="Permission to grant (can_view, can_edit, can_delete, can_share)")
+
+    resourceId: str = Field(
+        ..., description="Resource URN (e.g., urn:resource:team1:proj1:doc1)"
+    )
+    action: Permission = Field(
+        ...,
+        description="Permission to grant (can_view, can_edit, can_delete, can_share)",
+    )
     target: str = Field(..., description="Target user ID to grant permission to")
-    effect: Effect = Field(default=Effect.ALLOW, description="Effect (allow or deny), defaults to allow")
+    effect: Effect = Field(
+        default=Effect.ALLOW, description="Effect (allow or deny), defaults to allow"
+    )
 
     class Config:
         use_enum_values = True
@@ -30,7 +38,7 @@ class Builder:
     def build_policy_document(
         self,
         input_data: Union[ResourcePolicyDocument, PolicyOptions],
-        creator_id: Optional[str] = None
+        creator_id: Optional[str] = None,
     ) -> ResourcePolicyDocument:
         """Build or validate a policy document.
 
@@ -67,7 +75,9 @@ class Builder:
         # Build from simple options
         return self._build_from_options(input_data, creator_id)
 
-    def _build_from_options(self, options: PolicyOptions, creator_id: Optional[str] = None) -> ResourcePolicyDocument:
+    def _build_from_options(
+        self, options: PolicyOptions, creator_id: Optional[str] = None
+    ) -> ResourcePolicyDocument:
         """Build a complete policy document from simple options.
 
         Creates a policy that grants the specified permission to the target user.
@@ -86,39 +96,39 @@ class Builder:
 
         # Build resource info
         resource_info = ResourceInfo(
-            resourceId=options.resourceId,
-            creatorId=creator_id
+            resourceId=options.resourceId, creatorId=creator_id
         )
 
         # Build filter condition to match the target user
         filter_condition = Filter(
-            prop="user.id",
-            op=FilterOperator.EQ,
-            value=options.target
+            prop="user.id", op=FilterOperator.EQ, value=options.target
         )
 
         # Build the policy
         # Handle both enum and string values (Pydantic may convert to string with use_enum_values)
-        action_str = options.action.value if hasattr(options.action, 'value') else options.action
-        action_perm = options.action if isinstance(options.action, Permission) else Permission(options.action)
+        action_str = (
+            options.action.value if hasattr(options.action, "value") else options.action
+        )
+        action_perm = (
+            options.action
+            if isinstance(options.action, Permission)
+            else Permission(options.action)
+        )
 
         policy = ResourcePolicy(
             description=f"Grant {action_str} permission to user {options.target}",
             permissions=[action_perm],
             effect=options.effect,
-            filter=[filter_condition]
+            filter=[filter_condition],
         )
 
         # Build complete document
-        return ResourcePolicyDocument(
-            resource=resource_info,
-            policies=[policy]
-        )
+        return ResourcePolicyDocument(resource=resource_info, policies=[policy])
 
     def merge_policies(
         self,
         existing_doc: Optional[ResourcePolicyDocument],
-        new_doc: ResourcePolicyDocument
+        new_doc: ResourcePolicyDocument,
     ) -> ResourcePolicyDocument:
         """Merge new policies with existing policy document.
 
@@ -137,11 +147,12 @@ class Builder:
 
         # Return updated document
         return ResourcePolicyDocument(
-            resource=existing_doc.resource,
-            policies=merged_policies
+            resource=existing_doc.resource, policies=merged_policies
         )
 
-    def create_creator_policy(self, resource_id: str, creator_id: str) -> ResourcePolicyDocument:
+    def create_creator_policy(
+        self, resource_id: str, creator_id: str
+    ) -> ResourcePolicyDocument:
         """Create a default policy granting full access to the creator.
 
         This is useful for initializing policies when a new resource is created.
@@ -153,16 +164,11 @@ class Builder:
         Returns:
             Policy document with full creator access
         """
-        resource_info = ResourceInfo(
-            resourceId=resource_id,
-            creatorId=creator_id
-        )
+        resource_info = ResourceInfo(resourceId=resource_id, creatorId=creator_id)
 
         # Filter: document.creatorId == user.id
         filter_condition = Filter(
-            prop="document.creatorId",
-            op=FilterOperator.EQ,
-            value="user.id"
+            prop="document.creatorId", op=FilterOperator.EQ, value="user.id"
         )
 
         # Policy granting all permissions to creator
@@ -172,18 +178,17 @@ class Builder:
                 Permission.CAN_VIEW,
                 Permission.CAN_EDIT,
                 Permission.CAN_DELETE,
-                Permission.CAN_SHARE
+                Permission.CAN_SHARE,
             ],
             effect=Effect.ALLOW,
-            filter=[filter_condition]
+            filter=[filter_condition],
         )
 
-        return ResourcePolicyDocument(
-            resource=resource_info,
-            policies=[creator_policy]
-        )
+        return ResourcePolicyDocument(resource=resource_info, policies=[creator_policy])
 
-    def create_team_admin_policy(self, resource_id: str, creator_id: str) -> ResourcePolicyDocument:
+    def create_team_admin_policy(
+        self, resource_id: str, creator_id: str
+    ) -> ResourcePolicyDocument:
         """Create a policy granting full access to team admins.
 
         Args:
@@ -193,16 +198,11 @@ class Builder:
         Returns:
             Policy document with team admin access
         """
-        resource_info = ResourceInfo(
-            resourceId=resource_id,
-            creatorId=creator_id
-        )
+        resource_info = ResourceInfo(resourceId=resource_id, creatorId=creator_id)
 
         # Filter: teamMembership.role == "admin"
         filter_condition = Filter(
-            prop="teamMembership.role",
-            op=FilterOperator.EQ,
-            value="admin"
+            prop="teamMembership.role", op=FilterOperator.EQ, value="admin"
         )
 
         # Policy granting all permissions to team admins
@@ -212,18 +212,17 @@ class Builder:
                 Permission.CAN_VIEW,
                 Permission.CAN_EDIT,
                 Permission.CAN_DELETE,
-                Permission.CAN_SHARE
+                Permission.CAN_SHARE,
             ],
             effect=Effect.ALLOW,
-            filter=[filter_condition]
+            filter=[filter_condition],
         )
 
-        return ResourcePolicyDocument(
-            resource=resource_info,
-            policies=[admin_policy]
-        )
+        return ResourcePolicyDocument(resource=resource_info, policies=[admin_policy])
 
-    def create_public_view_policy(self, resource_id: str, creator_id: str) -> ResourcePolicyDocument:
+    def create_public_view_policy(
+        self, resource_id: str, creator_id: str
+    ) -> ResourcePolicyDocument:
         """Create a policy allowing public view access when public link is enabled.
 
         Args:
@@ -233,16 +232,11 @@ class Builder:
         Returns:
             Policy document with public view access
         """
-        resource_info = ResourceInfo(
-            resourceId=resource_id,
-            creatorId=creator_id
-        )
+        resource_info = ResourceInfo(resourceId=resource_id, creatorId=creator_id)
 
         # Filter: document.publicLinkEnabled == true
         filter_condition = Filter(
-            prop="document.publicLinkEnabled",
-            op=FilterOperator.EQ,
-            value=True
+            prop="document.publicLinkEnabled", op=FilterOperator.EQ, value=True
         )
 
         # Policy granting view permission when public link enabled
@@ -250,10 +244,7 @@ class Builder:
             description="Public view access when link is enabled",
             permissions=[Permission.CAN_VIEW],
             effect=Effect.ALLOW,
-            filter=[filter_condition]
+            filter=[filter_condition],
         )
 
-        return ResourcePolicyDocument(
-            resource=resource_info,
-            policies=[public_policy]
-        )
+        return ResourcePolicyDocument(resource=resource_info, policies=[public_policy])
