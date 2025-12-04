@@ -15,8 +15,7 @@ from src.database.connection import get_database, close_database
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------------
 # Lifespan context manager for startup/shutdown
 # -------------------------------------------------------------------------
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,6 +83,7 @@ app.add_middleware(
 # Exception handlers
 # -------------------------------------------------------------------------
 
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled exceptions.
@@ -101,13 +102,14 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "error": "INTERNAL_ERROR",
             "message": "An internal server error occurred",
-        }
+        },
     )
 
 
 # -------------------------------------------------------------------------
 # Request logging middleware
 # -------------------------------------------------------------------------
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -133,16 +135,13 @@ async def log_requests(request: Request, call_next):
 # Register routers
 # -------------------------------------------------------------------------
 
-app.include_router(
-    router,
-    prefix="/api/v1",
-    tags=["permissions"]
-)
+app.include_router(router, prefix="/api/v1", tags=["permissions"])
 
 
 # -------------------------------------------------------------------------
 # Root endpoint
 # -------------------------------------------------------------------------
+
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -155,7 +154,7 @@ async def root():
         "message": "Permission Control Service",
         "version": "1.0.0",
         "documentation": "/docs",
-        "health": "/api/v1/health"
+        "health": "/api/v1/health",
     }
 
 
@@ -171,5 +170,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,  # Auto-reload on code changes (development only)
-        log_level="info"
+        log_level="info",
     )
