@@ -1,0 +1,541 @@
+###############################################################################
+# Test Automation Plan
+# Project: Permission DSL Challenge
+# Version: 1.0.0
+# Created: Stage 4 - Test Planning
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "Python Senior Developer & Database Administrator"
+  created_date: "2025-12-04"
+
+###############################################################################
+# 1. TESTING OVERVIEW
+###############################################################################
+
+overview:
+  purpose: "Comprehensive test automation for permission control system"
+  testing_philosophy: "Test-driven quality assurance with high coverage"
+
+  testing_layers:
+    - name: "Unit Tests"
+      description: "Test individual components in isolation"
+      coverage_target: "90%"
+      execution_time: "< 5 seconds"
+
+    - name: "Integration Tests"
+      description: "Test component interactions and API endpoints"
+      coverage_target: "80%"
+      execution_time: "< 30 seconds"
+
+    - name: "Database Tests"
+      description: "Test data integrity and query correctness"
+      coverage_target: "85%"
+      execution_time: "< 10 seconds"
+
+  testing_tools:
+    framework: "pytest"
+    async_support: "pytest-asyncio"
+    coverage: "pytest-cov"
+    mocking: "unittest.mock"
+    http_client: "httpx (for API testing)"
+    database: "SQLite in-memory (for tests)"
+
+###############################################################################
+# 2. TEST STRUCTURE
+###############################################################################
+
+test_structure:
+  directory_layout: |
+    tests/
+    ├── __init__.py
+    ├── conftest.py                      # Shared fixtures
+    ├── unit/                            # Unit tests
+    │   ├── __init__.py
+    │   ├── test_filter_engine.py
+    │   ├── test_evaluator.py
+    │   ├── test_builder.py
+    │   ├── test_database_connection.py
+    │   └── test_repository.py
+    ├── integration/                     # Integration tests
+    │   ├── __init__.py
+    │   ├── test_api_health.py
+    │   ├── test_api_policy_crud.py
+    │   ├── test_api_permission_check.py
+    │   └── test_scenarios.py          # 7 README scenarios
+    └── fixtures/                        # Test data
+        ├── __init__.py
+        ├── sample_policies.py
+        └── sample_entities.py
+
+  configuration_files:
+    - file: "pytest.ini"
+      purpose: "pytest configuration (test discovery, markers)"
+
+    - file: ".coveragerc"
+      purpose: "Coverage configuration (source paths, exclusions)"
+
+    - file: "conftest.py"
+      purpose: "Shared fixtures (database, test client, sample data)"
+
+###############################################################################
+# 3. UNIT TESTS PLAN
+###############################################################################
+
+unit_tests:
+  test_filter_engine:
+    file: "tests/unit/test_filter_engine.py"
+    component: "src/components/filter_engine.py"
+    test_count: "~30 tests"
+
+    test_categories:
+      - category: "Operator Tests"
+        tests:
+          - "test_operator_eq_with_matching_values"
+          - "test_operator_eq_with_different_values"
+          - "test_operator_ne_with_matching_values"
+          - "test_operator_ne_with_different_values"
+          - "test_operator_gt_with_numbers"
+          - "test_operator_gte_with_numbers"
+          - "test_operator_lt_with_numbers"
+          - "test_operator_lte_with_numbers"
+          - "test_operator_ne_null_with_non_null_value"
+          - "test_operator_ne_null_with_null_value"
+          - "test_operator_in_with_value_in_list"
+          - "test_operator_in_with_value_not_in_list"
+          - "test_operator_not_in_with_value_in_list"
+          - "test_operator_not_in_with_value_not_in_list"
+          - "test_operator_has_substring_match"
+          - "test_operator_has_substring_no_match"
+          - "test_operator_has_not_substring_match"
+          - "test_operator_has_not_substring_no_match"
+
+      - category: "Property Resolution Tests"
+        tests:
+          - "test_resolve_property_simple_path"
+          - "test_resolve_property_nested_path"
+          - "test_resolve_property_missing_path"
+          - "test_resolve_property_from_model"
+
+      - category: "Value Resolution Tests"
+        tests:
+          - "test_resolve_value_literal_string"
+          - "test_resolve_value_literal_number"
+          - "test_resolve_value_property_reference"
+          - "test_resolve_value_with_context"
+
+      - category: "Filter Evaluation Tests"
+        tests:
+          - "test_evaluate_single_filter_pass"
+          - "test_evaluate_single_filter_fail"
+          - "test_evaluate_multiple_filters_all_pass"
+          - "test_evaluate_multiple_filters_one_fails"
+          - "test_evaluate_empty_filters_list"
+
+      - category: "Edge Cases"
+        tests:
+          - "test_null_left_operand"
+          - "test_type_mismatch_in_comparison"
+          - "test_invalid_property_path"
+
+  test_evaluator:
+    file: "tests/unit/test_evaluator.py"
+    component: "src/components/evaluator.py"
+    test_count: "~25 tests"
+
+    test_categories:
+      - category: "URN Handling"
+        tests:
+          - "test_extract_urn_components_valid"
+          - "test_extract_urn_components_invalid_format"
+          - "test_build_resource_urn"
+
+      - category: "Policy Precedence"
+        tests:
+          - "test_deny_policy_overrides_allow"
+          - "test_allow_policy_grants_access"
+          - "test_default_deny_when_no_policies"
+          - "test_multiple_allow_policies"
+          - "test_multiple_deny_policies"
+
+      - category: "Context Building"
+        tests:
+          - "test_build_context_with_all_entities"
+          - "test_build_context_with_minimal_entities"
+          - "test_build_context_with_optional_memberships"
+
+      - category: "Permission Evaluation"
+        tests:
+          - "test_evaluate_permission_allow"
+          - "test_evaluate_permission_deny"
+          - "test_evaluate_permission_deleted_document"
+          - "test_evaluate_permission_no_matching_policies"
+          - "test_evaluate_permission_with_filter_match"
+          - "test_evaluate_permission_with_filter_no_match"
+
+      - category: "Filter Integration"
+        tests:
+          - "test_policy_with_single_filter"
+          - "test_policy_with_multiple_filters"
+          - "test_policy_with_no_filters"
+
+      - category: "Edge Cases"
+        tests:
+          - "test_missing_user"
+          - "test_missing_document"
+          - "test_null_policy_documents"
+
+  test_builder:
+    file: "tests/unit/test_builder.py"
+    component: "src/components/builder.py"
+    test_count: "~15 tests"
+
+    test_categories:
+      - category: "Policy Building"
+        tests:
+          - "test_build_from_policy_options"
+          - "test_build_from_full_document"
+          - "test_build_with_effect_allow"
+          - "test_build_with_effect_deny"
+
+      - category: "Helper Methods"
+        tests:
+          - "test_create_creator_policy"
+          - "test_create_team_admin_policy"
+          - "test_create_public_view_policy"
+
+      - category: "Policy Merging"
+        tests:
+          - "test_merge_policies_with_existing"
+          - "test_merge_policies_without_existing"
+          - "test_merge_duplicate_policies"
+
+      - category: "Validation"
+        tests:
+          - "test_validate_resource_id_format"
+          - "test_validate_permission_enum"
+          - "test_validate_effect_enum"
+
+      - category: "Edge Cases"
+        tests:
+          - "test_empty_policy_document"
+          - "test_missing_creator_id"
+
+  test_database:
+    files:
+      - "tests/unit/test_database_connection.py"
+      - "tests/unit/test_repository.py"
+    test_count: "~20 tests"
+
+    test_categories:
+      - category: "Connection Management"
+        tests:
+          - "test_connect_sqlite"
+          - "test_connect_postgres"
+          - "test_connection_from_env"
+          - "test_transaction_commit"
+          - "test_transaction_rollback"
+          - "test_is_connected"
+
+      - category: "Repository CRUD"
+        tests:
+          - "test_get_user_exists"
+          - "test_get_user_not_found"
+          - "test_get_team_exists"
+          - "test_get_project_exists"
+          - "test_get_document_exists"
+          - "test_get_document_with_soft_delete"
+          - "test_get_team_membership"
+          - "test_get_project_membership"
+
+      - category: "Policy Operations"
+        tests:
+          - "test_get_resource_policy_exists"
+          - "test_get_resource_policy_not_found"
+          - "test_save_resource_policy_new"
+          - "test_save_resource_policy_update"
+          - "test_get_user_policy_exists"
+          - "test_save_user_policy_new"
+
+      - category: "JSON Handling"
+        tests:
+          - "test_policy_json_serialization"
+          - "test_policy_json_deserialization"
+
+###############################################################################
+# 4. INTEGRATION TESTS PLAN
+###############################################################################
+
+integration_tests:
+  test_api_health:
+    file: "tests/integration/test_api_health.py"
+    test_count: "~3 tests"
+
+    tests:
+      - "test_health_endpoint_success"
+      - "test_health_endpoint_with_database_connected"
+      - "test_health_endpoint_with_database_disconnected"
+
+  test_api_policy_crud:
+    file: "tests/integration/test_api_policy_crud.py"
+    test_count: "~8 tests"
+
+    tests:
+      - "test_get_policy_success"
+      - "test_get_policy_not_found"
+      - "test_get_policy_invalid_resource_id"
+      - "test_create_policy_with_full_document"
+      - "test_create_policy_with_options"
+      - "test_create_policy_invalid_input"
+      - "test_update_existing_policy"
+      - "test_policy_version_increment"
+
+  test_api_permission_check:
+    file: "tests/integration/test_api_permission_check.py"
+    test_count: "~10 tests"
+
+    tests:
+      - "test_permission_check_allow"
+      - "test_permission_check_deny"
+      - "test_permission_check_deleted_document"
+      - "test_permission_check_missing_user"
+      - "test_permission_check_missing_document"
+      - "test_permission_check_missing_policy"
+      - "test_permission_check_invalid_action"
+      - "test_permission_check_invalid_resource_id"
+      - "test_permission_check_with_evaluation_details"
+      - "test_permission_check_performance"
+
+  test_scenarios:
+    file: "tests/integration/test_scenarios.py"
+    description: "Test all 7 permission scenarios from README.md"
+    test_count: "7 tests"
+
+    scenarios:
+      - name: "Scenario 1: Creator Access"
+        test: "test_scenario_1_creator_has_full_access"
+        description: "Document creator has full permissions"
+
+      - name: "Scenario 2: Team Admin Access"
+        test: "test_scenario_2_team_admin_has_access"
+        description: "Team admin has access to team documents"
+
+      - name: "Scenario 3: Project Member Access"
+        test: "test_scenario_3_project_member_has_access"
+        description: "Project member has access based on role"
+
+      - name: "Scenario 4: Public Link Access"
+        test: "test_scenario_4_public_link_enabled"
+        description: "Anyone can view when public link is enabled"
+
+      - name: "Scenario 5: Deleted Document Denial"
+        test: "test_scenario_5_deleted_document_denied"
+        description: "No access to deleted documents"
+
+      - name: "Scenario 6: Explicit Deny Override"
+        test: "test_scenario_6_explicit_deny_overrides_allow"
+        description: "DENY policy overrides ALLOW policy"
+
+      - name: "Scenario 7: No Permission Default Deny"
+        test: "test_scenario_7_no_permission_default_deny"
+        description: "Users without permissions are denied by default"
+
+###############################################################################
+# 5. TEST FIXTURES AND DATA
+###############################################################################
+
+test_fixtures:
+  database_fixture:
+    name: "test_db"
+    description: "In-memory SQLite database for tests"
+    scope: "function"
+    setup:
+      - "Create in-memory SQLite database"
+      - "Run all migration scripts"
+      - "Insert sample data"
+    teardown:
+      - "Close database connection"
+      - "Clean up resources"
+
+  test_client_fixture:
+    name: "test_client"
+    description: "FastAPI TestClient for API tests"
+    scope: "module"
+    dependencies: ["test_db"]
+
+  sample_entities_fixture:
+    name: "sample_entities"
+    description: "Sample users, teams, projects, documents"
+    scope: "session"
+    includes:
+      - "2 users (admin, editor)"
+      - "2 teams (pro, free)"
+      - "2 projects (private, public)"
+      - "3 documents (active, deleted, public link)"
+
+  sample_policies_fixture:
+    name: "sample_policies"
+    description: "Sample policy documents"
+    scope: "session"
+    includes:
+      - "Creator full access policy"
+      - "Team admin policy"
+      - "Public link policy"
+      - "Explicit deny policy"
+
+###############################################################################
+# 6. COVERAGE REQUIREMENTS
+###############################################################################
+
+coverage_requirements:
+  overall_target: "85%"
+
+  component_targets:
+    - component: "src/components/filter_engine.py"
+      target: "95%"
+      critical: true
+      reason: "Core logic for filter evaluation"
+
+    - component: "src/components/evaluator.py"
+      target: "90%"
+      critical: true
+      reason: "Core logic for permission evaluation"
+
+    - component: "src/components/builder.py"
+      target: "85%"
+      critical: false
+      reason: "Policy building logic"
+
+    - component: "src/database/repository.py"
+      target: "80%"
+      critical: false
+      reason: "Data access layer"
+
+    - component: "src/api/routes.py"
+      target: "85%"
+      critical: true
+      reason: "API endpoints"
+
+  exclusions:
+    - "__init__.py files"
+    - "test files"
+    - "migration scripts"
+
+###############################################################################
+# 7. TEST EXECUTION
+###############################################################################
+
+test_execution:
+  commands:
+    run_all_tests:
+      command: "uv run pytest tests/"
+      description: "Run all tests"
+
+    run_unit_tests:
+      command: "uv run pytest tests/unit/"
+      description: "Run only unit tests"
+
+    run_integration_tests:
+      command: "uv run pytest tests/integration/"
+      description: "Run only integration tests"
+
+    run_with_coverage:
+      command: "uv run pytest --cov=src --cov-report=html tests/"
+      description: "Run tests with coverage report"
+
+    run_specific_test:
+      command: "uv run pytest tests/unit/test_filter_engine.py::test_operator_eq"
+      description: "Run specific test"
+
+    run_with_markers:
+      command: "uv run pytest -m slow"
+      description: "Run tests with specific marker"
+
+  pytest_markers:
+    - marker: "unit"
+      description: "Unit tests"
+
+    - marker: "integration"
+      description: "Integration tests"
+
+    - marker: "slow"
+      description: "Tests that take > 1 second"
+
+    - marker: "database"
+      description: "Tests requiring database"
+
+###############################################################################
+# 8. CI/CD INTEGRATION
+###############################################################################
+
+ci_cd_integration:
+  github_actions:
+    workflow_file: ".github/workflows/test.yml"
+    triggers:
+      - "push"
+      - "pull_request"
+
+    steps:
+      - "Checkout code"
+      - "Set up Python 3.13"
+      - "Install uv"
+      - "Install dependencies (uv sync)"
+      - "Run linting (black --check, mypy)"
+      - "Run tests (pytest)"
+      - "Upload coverage report"
+      - "Fail if coverage < 85%"
+
+  pre_commit_hooks:
+    - hook: "black"
+      description: "Format code"
+
+    - hook: "mypy"
+      description: "Type checking"
+
+    - hook: "pytest-quick"
+      description: "Run fast tests (< 5s)"
+
+###############################################################################
+# 9. PERFORMANCE TESTING
+###############################################################################
+
+performance_testing:
+  benchmarks:
+    - test: "test_filter_evaluation_performance"
+      target: "< 1ms per filter evaluation"
+      method: "pytest-benchmark"
+
+    - test: "test_permission_check_performance"
+      target: "< 200ms (p95) for permission check"
+      method: "Timing in integration tests"
+
+    - test: "test_policy_crud_performance"
+      target: "< 100ms for policy creation"
+      method: "Timing in integration tests"
+
+###############################################################################
+# 10. TEST MAINTENANCE
+###############################################################################
+
+test_maintenance:
+  review_frequency: "Every sprint (2 weeks)"
+
+  maintenance_tasks:
+    - "Remove obsolete tests"
+    - "Update tests for new features"
+    - "Refactor duplicated test code"
+    - "Update test data fixtures"
+    - "Review and improve coverage"
+
+  test_quality_metrics:
+    - "Test execution time (should stay < 30s)"
+    - "Test flakiness (zero tolerance)"
+    - "Test coverage (maintain > 85%)"
+    - "Test clarity (readable assertions)"
+
+###############################################################################
+# END OF TEST AUTOMATION PLAN
+###############################################################################

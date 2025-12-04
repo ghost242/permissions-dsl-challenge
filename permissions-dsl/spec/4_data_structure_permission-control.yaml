@@ -1,0 +1,682 @@
+###############################################################################
+# Data Structure Specification
+# Service: Permission Control
+# Version: 1.0.0
+# Created: Stage 3 - System Spec Generation
+###############################################################################
+
+metadata:
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "Database Administrator"
+  created_date: "2025-12-04"
+  database_type: "Relational (PostgreSQL/SQLite)"
+
+###############################################################################
+# 1. OVERVIEW
+###############################################################################
+
+overview:
+  purpose: "Store entities, relationships, and policy documents for permission system"
+  principles:
+    - "Simple schema matching README.md specifications"
+    - "Use JSONB for flexible policy documents"
+    - "Foreign keys for referential integrity"
+    - "Minimal indexes for performance"
+
+###############################################################################
+# 2. TABLE DEFINITIONS
+###############################################################################
+
+tables:
+  users:
+    description: "User entities from README.md"
+    fields:
+      - name: "id"
+        type: "VARCHAR(255)"
+        constraints: "PRIMARY KEY"
+        description: "User identifier"
+
+      - name: "email"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL UNIQUE"
+        description: "User email address"
+
+      - name: "name"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+        description: "User display name"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        description: "Record creation time"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        description: "Record last update time"
+
+    indexes:
+      - name: "idx_users_email"
+        columns: ["email"]
+        type: "BTREE"
+        unique: true
+        reason: "Fast lookup by email for authentication"
+
+    sample_data:
+      - id: "user1"
+        email: "admin@example.com"
+        name: "Admin User"
+
+      - id: "user2"
+        email: "editor@example.com"
+        name: "Editor User"
+
+  teams:
+    description: "Team entities from README.md"
+    fields:
+      - name: "id"
+        type: "VARCHAR(255)"
+        constraints: "PRIMARY KEY"
+        description: "Team identifier"
+
+      - name: "name"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+        description: "Team name"
+
+      - name: "plan"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL CHECK (plan IN ('free', 'pro', 'enterprise'))"
+        description: "Team subscription plan"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    indexes:
+      - name: "idx_teams_plan"
+        columns: ["plan"]
+        type: "BTREE"
+        unique: false
+        reason: "Filter teams by plan type"
+
+    sample_data:
+      - id: "team1"
+        name: "Acme Corp"
+        plan: "pro"
+
+      - id: "team2"
+        name: "Free Team"
+        plan: "free"
+
+  projects:
+    description: "Project entities from README.md"
+    fields:
+      - name: "id"
+        type: "VARCHAR(255)"
+        constraints: "PRIMARY KEY"
+        description: "Project identifier"
+
+      - name: "name"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+        description: "Project name"
+
+      - name: "teamId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES teams(id) ON DELETE CASCADE"
+        description: "Parent team ID"
+
+      - name: "visibility"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL CHECK (visibility IN ('private', 'public'))"
+        description: "Project visibility"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    indexes:
+      - name: "idx_projects_teamId"
+        columns: ["teamId"]
+        type: "BTREE"
+        unique: false
+        reason: "Fast lookup of projects by team"
+
+      - name: "idx_projects_visibility"
+        columns: ["visibility"]
+        type: "BTREE"
+        unique: false
+        reason: "Filter public/private projects"
+
+    foreign_keys:
+      - column: "teamId"
+        references: "teams(id)"
+        on_delete: "CASCADE"
+        reason: "Delete projects when team is deleted"
+
+    sample_data:
+      - id: "proj1"
+        name: "Main Project"
+        teamId: "team1"
+        visibility: "private"
+
+  documents:
+    description: "Document entities from README.md"
+    fields:
+      - name: "id"
+        type: "VARCHAR(255)"
+        constraints: "PRIMARY KEY"
+        description: "Document identifier"
+
+      - name: "title"
+        type: "VARCHAR(500)"
+        constraints: "NOT NULL"
+        description: "Document title"
+
+      - name: "projectId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES projects(id) ON DELETE CASCADE"
+        description: "Parent project ID"
+
+      - name: "creatorId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES users(id) ON DELETE SET NULL"
+        description: "User who created the document"
+
+      - name: "deletedAt"
+        type: "TIMESTAMP"
+        constraints: "NULL"
+        description: "Soft delete timestamp (null if not deleted)"
+
+      - name: "publicLinkEnabled"
+        type: "BOOLEAN"
+        constraints: "NOT NULL DEFAULT FALSE"
+        description: "Whether document is accessible via public link"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    indexes:
+      - name: "idx_documents_projectId"
+        columns: ["projectId"]
+        type: "BTREE"
+        unique: false
+        reason: "List documents by project"
+
+      - name: "idx_documents_creatorId"
+        columns: ["creatorId"]
+        type: "BTREE"
+        unique: false
+        reason: "Find documents by creator"
+
+      - name: "idx_documents_deletedAt"
+        columns: ["deletedAt"]
+        type: "BTREE"
+        unique: false
+        reason: "Filter deleted vs active documents"
+
+      - name: "idx_documents_publicLinkEnabled"
+        columns: ["publicLinkEnabled"]
+        type: "BTREE"
+        unique: false
+        reason: "Find public documents quickly"
+
+    foreign_keys:
+      - column: "projectId"
+        references: "projects(id)"
+        on_delete: "CASCADE"
+        reason: "Delete documents when project is deleted"
+
+      - column: "creatorId"
+        references: "users(id)"
+        on_delete: "SET NULL"
+        reason: "Keep document if creator is deleted"
+
+    sample_data:
+      - id: "doc1"
+        title: "Important Document"
+        projectId: "proj1"
+        creatorId: "user1"
+        deletedAt: null
+        publicLinkEnabled: false
+
+  team_memberships:
+    description: "User membership in teams from README.md"
+    fields:
+      - name: "userId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES users(id) ON DELETE CASCADE"
+        description: "User ID"
+
+      - name: "teamId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES teams(id) ON DELETE CASCADE"
+        description: "Team ID"
+
+      - name: "role"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL CHECK (role IN ('viewer', 'editor', 'admin'))"
+        description: "User role in team"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    primary_key:
+      columns: ["userId", "teamId"]
+      reason: "Composite key - one user per team"
+
+    indexes:
+      - name: "idx_team_memberships_teamId"
+        columns: ["teamId"]
+        type: "BTREE"
+        unique: false
+        reason: "List members of a team"
+
+      - name: "idx_team_memberships_role"
+        columns: ["role"]
+        type: "BTREE"
+        unique: false
+        reason: "Find admins/editors quickly"
+
+    foreign_keys:
+      - column: "userId"
+        references: "users(id)"
+        on_delete: "CASCADE"
+
+      - column: "teamId"
+        references: "teams(id)"
+        on_delete: "CASCADE"
+
+    sample_data:
+      - userId: "user1"
+        teamId: "team1"
+        role: "admin"
+
+      - userId: "user2"
+        teamId: "team1"
+        role: "editor"
+
+  project_memberships:
+    description: "User membership in projects from README.md"
+    fields:
+      - name: "userId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES users(id) ON DELETE CASCADE"
+        description: "User ID"
+
+      - name: "projectId"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL REFERENCES projects(id) ON DELETE CASCADE"
+        description: "Project ID"
+
+      - name: "role"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL CHECK (role IN ('viewer', 'editor', 'admin'))"
+        description: "User role in project"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    primary_key:
+      columns: ["userId", "projectId"]
+      reason: "Composite key - one user per project"
+
+    indexes:
+      - name: "idx_project_memberships_projectId"
+        columns: ["projectId"]
+        type: "BTREE"
+        unique: false
+        reason: "List members of a project"
+
+      - name: "idx_project_memberships_role"
+        columns: ["role"]
+        type: "BTREE"
+        unique: false
+        reason: "Find project admins/editors"
+
+    foreign_keys:
+      - column: "userId"
+        references: "users(id)"
+        on_delete: "CASCADE"
+
+      - column: "projectId"
+        references: "projects(id)"
+        on_delete: "CASCADE"
+
+    sample_data:
+      - userId: "user2"
+        projectId: "proj1"
+        role: "editor"
+
+  resource_policies:
+    description: "Policy documents for resources (JSONB storage)"
+    fields:
+      - name: "id"
+        type: "SERIAL"
+        constraints: "PRIMARY KEY"
+        description: "Auto-increment ID"
+
+      - name: "resource_id"
+        type: "VARCHAR(500)"
+        constraints: "NOT NULL UNIQUE"
+        description: "Resource URN (e.g., urn:resource:team1:proj1:doc1)"
+
+      - name: "policy_document"
+        type: "JSONB"
+        constraints: "NOT NULL"
+        description: "Complete ResourcePolicyDocument as JSON"
+        note_postgres: "Use JSONB for efficient queries"
+        note_sqlite: "Use TEXT for SQLite compatibility"
+
+      - name: "version"
+        type: "INTEGER"
+        constraints: "NOT NULL DEFAULT 1"
+        description: "Policy version for tracking changes"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    indexes:
+      - name: "idx_resource_policies_resource_id"
+        columns: ["resource_id"]
+        type: "BTREE"
+        unique: true
+        reason: "Fast lookup by resource ID"
+
+      - name: "idx_resource_policies_document"
+        columns: ["policy_document"]
+        type: "GIN"
+        unique: false
+        reason: "Query JSONB content (PostgreSQL only)"
+        note: "Skip for SQLite"
+
+    sample_data:
+      - resource_id: "urn:resource:team1:proj1:doc1"
+        policy_document:
+          resource:
+            resourceId: "urn:resource:team1:proj1:doc1"
+            creatorId: "user1"
+          policies:
+            - description: "Creator has full access"
+              permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+              effect: "allow"
+              filter:
+                - prop: "document.creatorId"
+                  op: "=="
+                  value: "user.id"
+
+  user_policies:
+    description: "Policy documents for users (JSONB storage)"
+    fields:
+      - name: "id"
+        type: "SERIAL"
+        constraints: "PRIMARY KEY"
+        description: "Auto-increment ID"
+
+      - name: "user_id"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE"
+        description: "User ID"
+
+      - name: "policy_document"
+        type: "JSONB"
+        constraints: "NOT NULL"
+        description: "Complete UserPolicyDocument as JSON"
+
+      - name: "version"
+        type: "INTEGER"
+        constraints: "NOT NULL DEFAULT 1"
+        description: "Policy version"
+
+      - name: "created_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+      - name: "updated_at"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
+    indexes:
+      - name: "idx_user_policies_user_id"
+        columns: ["user_id"]
+        type: "BTREE"
+        unique: true
+        reason: "Fast lookup by user ID"
+
+      - name: "idx_user_policies_document"
+        columns: ["policy_document"]
+        type: "GIN"
+        unique: false
+        reason: "Query JSONB content (PostgreSQL only)"
+        note: "Skip for SQLite"
+
+    foreign_keys:
+      - column: "user_id"
+        references: "users(id)"
+        on_delete: "CASCADE"
+
+    sample_data:
+      - user_id: "user1"
+        policy_document:
+          policies:
+            - description: "Admin has full access to team resources"
+              filter:
+                - prop: "user.teamRole"
+                  op: "=="
+                  value: "admin"
+              permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+              effect: "allow"
+
+###############################################################################
+# 3. RELATIONSHIPS
+###############################################################################
+
+relationships:
+  team_to_projects:
+    type: "One-to-Many"
+    description: "One team has many projects"
+    foreign_key: "projects.teamId → teams.id"
+
+  project_to_documents:
+    type: "One-to-Many"
+    description: "One project has many documents"
+    foreign_key: "documents.projectId → projects.id"
+
+  user_to_documents:
+    type: "One-to-Many"
+    description: "One user creates many documents"
+    foreign_key: "documents.creatorId → users.id"
+
+  user_to_teams:
+    type: "Many-to-Many"
+    description: "Users belong to multiple teams with roles"
+    junction_table: "team_memberships"
+
+  user_to_projects:
+    type: "Many-to-Many"
+    description: "Users belong to multiple projects with roles"
+    junction_table: "project_memberships"
+
+  user_to_policy:
+    type: "One-to-One"
+    description: "Each user has one policy document"
+    foreign_key: "user_policies.user_id → users.id"
+
+  resource_to_policy:
+    type: "One-to-One"
+    description: "Each resource has one policy document"
+    unique_constraint: "resource_policies.resource_id"
+
+###############################################################################
+# 4. MIGRATION SCRIPTS
+###############################################################################
+
+migrations:
+  approach: "Simple SQL scripts executed in order"
+  location: "migrations/"
+
+  files:
+    001_initial_schema:
+      file: "migrations/001_initial_schema.sql"
+      description: "Create all tables"
+      includes:
+        - "CREATE TABLE users"
+        - "CREATE TABLE teams"
+        - "CREATE TABLE projects"
+        - "CREATE TABLE documents"
+        - "CREATE TABLE team_memberships"
+        - "CREATE TABLE project_memberships"
+        - "CREATE TABLE resource_policies"
+        - "CREATE TABLE user_policies"
+
+    002_add_indexes:
+      file: "migrations/002_add_indexes.sql"
+      description: "Add performance indexes"
+      includes:
+        - "CREATE INDEX idx_users_email ON users(email)"
+        - "CREATE INDEX idx_documents_projectId ON documents(projectId)"
+        - "... (all other indexes)"
+
+    003_sample_data:
+      file: "migrations/003_sample_data.sql"
+      description: "Insert sample data for testing"
+      optional: true
+      includes:
+        - "INSERT INTO users ..."
+        - "INSERT INTO teams ..."
+        - "... (sample records)"
+
+###############################################################################
+# 5. QUERIES
+###############################################################################
+
+common_queries:
+  get_user_with_memberships:
+    description: "Get user with team and project memberships"
+    sql: |
+      SELECT u.*,
+             tm.teamId, tm.role as team_role,
+             pm.projectId, pm.role as project_role
+      FROM users u
+      LEFT JOIN team_memberships tm ON u.id = tm.userId
+      LEFT JOIN project_memberships pm ON u.id = pm.userId
+      WHERE u.id = $1;
+
+  get_document_with_context:
+    description: "Get document with full context for permission evaluation"
+    sql: |
+      SELECT d.*,
+             p.teamId, p.visibility as project_visibility,
+             t.plan as team_plan
+      FROM documents d
+      JOIN projects p ON d.projectId = p.id
+      JOIN teams t ON p.teamId = t.id
+      WHERE d.id = $1;
+
+  get_resource_policy:
+    description: "Get policy document for a resource"
+    sql: |
+      SELECT policy_document
+      FROM resource_policies
+      WHERE resource_id = $1;
+
+  get_user_policy:
+    description: "Get policy document for a user"
+    sql: |
+      SELECT policy_document
+      FROM user_policies
+      WHERE user_id = $1;
+
+  list_team_members:
+    description: "List all members of a team with roles"
+    sql: |
+      SELECT u.id, u.email, u.name, tm.role
+      FROM team_memberships tm
+      JOIN users u ON tm.userId = u.id
+      WHERE tm.teamId = $1
+      ORDER BY tm.role DESC, u.name;
+
+###############################################################################
+# 6. PERFORMANCE CONSIDERATIONS
+###############################################################################
+
+performance:
+  indexing_strategy:
+    - "Index all foreign keys for JOIN performance"
+    - "Index frequently queried fields (email, deletedAt, publicLinkEnabled)"
+    - "Use GIN index for JSONB policy_document (PostgreSQL only)"
+
+  query_optimization:
+    - "Use prepared statements for repeated queries"
+    - "Fetch only required columns (avoid SELECT *)"
+    - "Use EXISTS instead of COUNT when checking existence"
+
+  jsonb_usage:
+    reason: "Flexible policy storage without schema changes"
+    benefits:
+      - "Can store complex nested policies"
+      - "Can query policy contents with GIN index"
+      - "Version policies easily"
+    drawbacks:
+      - "Less type safety than normalized tables"
+      - "Requires careful validation in application layer"
+
+###############################################################################
+# 7. DATA INTEGRITY
+###############################################################################
+
+data_integrity:
+  foreign_keys:
+    - "All relationships enforced with FK constraints"
+    - "CASCADE delete for dependent records"
+    - "SET NULL for optional references"
+
+  check_constraints:
+    - "Enum values (role, plan, visibility) validated at DB level"
+    - "Prevents invalid data insertion"
+
+  unique_constraints:
+    - "Email unique per user"
+    - "One membership per user-team pair"
+    - "One membership per user-project pair"
+    - "One policy per resource"
+    - "One policy per user"
+
+  null_handling:
+    - "deletedAt NULL means document not deleted"
+    - "creatorId can be NULL if creator deleted (SET NULL)"
+
+###############################################################################
+# END OF DATA STRUCTURE SPECIFICATION
+###############################################################################

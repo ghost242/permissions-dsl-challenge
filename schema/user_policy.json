@@ -1,0 +1,70 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:user:policy:document",
+    "title": "UserPolicy",
+    "type": "object",
+    "properties": {
+        "policies": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/user_policy"
+            }
+        }
+    },
+    "required": [
+        "policies"
+    ],
+    "$defs": {
+        "user_policy": {
+            "type": "object",
+            "properties": {
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "description": "apply condition option",
+                        "properties": {
+                            "prop": {
+                                "type": "string"
+                            },
+                            "op": {
+                                "enum": ["==", "!=", ">", ">=", "<", "<=", "<>", "in", "not in", "has", "has not"]
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "minContains": 1,
+                    "uniqueItems": true
+                },
+                "description": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "can_view",
+                            "can_edit",
+                            "can_delete",
+                            "can_share"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
+                "effect": {
+                    "enum": [
+                        "allow",
+                        "deny"
+                    ]
+                }
+            },
+            "required": [
+                "resourceId",
+                "permissions",
+                "effect"
+            ]
+        }
+    }
+}

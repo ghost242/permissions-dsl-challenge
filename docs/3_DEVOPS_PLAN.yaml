@@ -1,0 +1,427 @@
+###############################################################################
+# DevOps Plan (Simplified)
+# Project: Permission DSL Challenge
+# Service: Permission Control System
+# Version: 1.0.0 (Simplified)
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  description: "Simple CI/CD and deployment plan matching simplified architecture"
+  principle: "Start simple, add complexity only when needed"
+
+###############################################################################
+# 1. VERSION CONTROL
+###############################################################################
+
+version_control:
+  repository: "GitHub / GitLab"
+  branching:
+    strategy: "Simple trunk-based development"
+    branches:
+      main: "Production-ready code"
+      feature/*: "Feature branches (merge via PR)"
+    workflow:
+      - "Create feature branch from main"
+      - "Make changes, commit, push"
+      - "Open pull request"
+      - "Tests run automatically"
+      - "Merge to main after approval"
+
+###############################################################################
+# 2. CI/CD PIPELINE (Simple)
+###############################################################################
+
+ci_cd:
+  tool: "GitHub Actions"
+  config_file: ".github/workflows/main.yml"
+
+  pipeline:
+    on_pull_request:
+      jobs:
+        code_quality:
+          steps:
+            - "Checkout code"
+            - "Setup Python 3.13"
+            - "Install uv"
+            - "Install dependencies: uv sync"
+            - "Run black: uv run black --check src/ tests/"
+            - "Run mypy: uv run mypy src/"
+
+        tests:
+          steps:
+            - "Checkout code"
+            - "Setup Python 3.13"
+            - "Install dependencies: uv sync"
+            - "Run unit tests: uv run pytest tests/unit/ --cov=src"
+            - "Run integration tests: uv run pytest tests/integration/"
+            - "Check coverage >= 80%"
+
+    on_push_to_main:
+      jobs:
+        build_and_deploy:
+          steps:
+            - "Checkout code"
+            - "Run all tests"
+            - "Build Docker image (optional)"
+            - "Deploy to production (if configured)"
+
+  deployment_options:
+    option_1_manual:
+      description: "Manual deployment to VPS"
+      steps:
+        - "SSH to server"
+        - "git pull origin main"
+        - "uv sync"
+        - "Restart service: systemctl restart permissions-api"
+
+    option_2_docker:
+      description: "Deploy Docker container"
+      steps:
+        - "Build: docker build -t permissions-api:${GIT_SHA} ."
+        - "Push to registry: docker push permissions-api:${GIT_SHA}"
+        - "Pull on server: docker pull permissions-api:${GIT_SHA}"
+        - "Restart: docker-compose up -d"
+
+    option_3_paas:
+      description: "Auto-deploy to PaaS"
+      platforms:
+        heroku: "Automatic on push to main"
+        railway: "Automatic on push to main"
+        render: "Automatic on push to main"
+      steps:
+        - "Connect GitHub repo"
+        - "Configure environment variables"
+        - "Push to main → auto-deploy"
+
+###############################################################################
+# 3. LOCAL DEVELOPMENT
+###############################################################################
+
+local_development:
+  setup:
+    steps:
+      - "Install Python 3.13+"
+      - "Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
+      - "Clone repository"
+      - "Run: uv sync"
+      - "Copy: cp .env.example .env"
+      - "Initialize DB: uv run python scripts/init_db.py"
+      - "Run: uv run uvicorn src.main:app --reload"
+
+  docker_compose:
+    file: "docker-compose.yml"
+    services:
+      api:
+        build: "."
+        ports: ["8000:8000"]
+        environment:
+          DATABASE_URL: "postgresql://user:pass@db:5432/permissions"
+      db:
+        image: "postgres:15"
+        environment:
+          POSTGRES_DB: "permissions"
+          POSTGRES_USER: "user"
+          POSTGRES_PASSWORD: "pass"
+        volumes: ["postgres_data:/var/lib/postgresql/data"]
+    command: "docker-compose up"
+
+###############################################################################
+# 4. DEPLOYMENT CONFIGURATIONS
+###############################################################################
+
+deployment:
+  environment_variables:
+    required:
+      - name: "DATABASE_URL"
+        example: "postgresql://user:pass@localhost:5432/permissions"
+        description: "Database connection string"
+
+      - name: "ENV"
+        values: ["local", "production"]
+        default: "local"
+
+    optional:
+      - name: "LOG_LEVEL"
+        values: ["DEBUG", "INFO", "WARNING"]
+        default: "INFO"
+
+      - name: "PORT"
+        default: "8000"
+
+  dockerfile:
+    content: |
+      FROM python:3.13-slim
+
+      WORKDIR /app
+
+      # Install uv
+      RUN pip install uv
+
+      # Copy dependency files
+      COPY pyproject.toml uv.lock ./
+
+      # Install dependencies
+      RUN uv sync --no-dev
+
+      # Copy application
+      COPY src/ ./src/
+      COPY migrations/ ./migrations/
+
+      # Expose port
+      EXPOSE 8000
+
+      # Run application
+      CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+###############################################################################
+# 5. DATABASE MANAGEMENT
+###############################################################################
+
+database:
+  migrations:
+    approach: "Simple SQL scripts"
+    location: "migrations/"
+    files:
+      - "001_initial_schema.sql"
+      - "002_add_indexes.sql"
+    execution:
+      manual: "psql $DATABASE_URL -f migrations/001_initial_schema.sql"
+      automated: "Python script: python scripts/migrate.py"
+
+  backups:
+    local:
+      method: "File copy (SQLite)"
+      schedule: "Manual"
+
+    production:
+      method: "pg_dump for PostgreSQL"
+      schedule: "Daily via cron or PaaS automatic backups"
+      command: "pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql"
+      retention: "Keep 7 days"
+
+  initialization:
+    script: "scripts/init_db.py"
+    purpose: "Create tables, add sample data"
+    usage: "uv run python scripts/init_db.py"
+
+###############################################################################
+# 6. MONITORING (Basic)
+###############################################################################
+
+monitoring:
+  application_logs:
+    method: "Python logging to stdout"
+    level: "INFO in production, DEBUG in local"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    collection:
+      local: "View in console"
+      docker: "docker logs permissions-api"
+      paas: "Built-in log viewer (Heroku logs, Railway logs)"
+
+  health_check:
+    endpoint: "GET /health"
+    response: |
+      {
+        "status": "healthy",
+        "database": "connected",
+        "version": "1.0.0"
+      }
+    usage:
+      - "Manual: curl http://localhost:8000/health"
+      - "Uptime monitoring: Use UptimeRobot or similar"
+
+  error_tracking:
+    optional: "Sentry (add sentry-sdk to dependencies)"
+    setup: "Set SENTRY_DSN environment variable"
+
+  metrics:
+    basic: "Log request count and response time"
+    optional: "Add /metrics endpoint with prometheus_client library"
+
+  uptime_monitoring:
+    free_tools:
+      - "UptimeRobot (free tier: 50 monitors)"
+      - "Better Uptime"
+      - "Pingdom"
+    setup:
+      - "Add health check URL"
+      - "Configure alert email"
+      - "Monitor every 5 minutes"
+
+###############################################################################
+# 7. SECURITY (Essential)
+###############################################################################
+
+security:
+  environment_variables:
+    storage:
+      local: ".env file (add to .gitignore)"
+      production: "Platform environment variables"
+    never_commit: "Passwords, API keys, secrets"
+
+  dependencies:
+    scanning:
+      tool: "pip-audit or Safety"
+      command: "uv run pip-audit"
+      schedule: "Weekly via GitHub Actions"
+
+  database:
+    local: "SQLite file (no special security needed)"
+    production:
+      - "Use strong password"
+      - "Enable SSL connection"
+      - "Restrict access to application IP only"
+
+  input_validation:
+    method: "Pydantic automatically validates all inputs"
+    sql_injection: "Use SQLAlchemy ORM or parameterized queries"
+
+  https:
+    local: "HTTP is fine"
+    production:
+      paas: "Automatic HTTPS certificate"
+      manual: "Use Let's Encrypt with Nginx or Caddy"
+
+###############################################################################
+# 8. DISASTER RECOVERY (Simple)
+###############################################################################
+
+disaster_recovery:
+  database_backups:
+    frequency:
+      local: "Manual backups before major changes"
+      production: "Daily automated backups"
+
+    method:
+      sqlite: "cp data/permissions.db data/permissions.db.backup"
+      postgresql: "pg_dump $DATABASE_URL > backup.sql"
+
+    restoration:
+      sqlite: "cp data/permissions.db.backup data/permissions.db"
+      postgresql: "psql $DATABASE_URL < backup.sql"
+
+  code_recovery:
+    method: "Git version control"
+    backup: "Code is in GitHub/GitLab (cloud backup)"
+    restoration: "git checkout main && git pull"
+
+  service_recovery:
+    if_crash:
+      docker: "docker-compose restart"
+      systemd: "systemctl restart permissions-api"
+      paas: "Automatic restart"
+
+    if_corrupted:
+      - "Restore database from backup"
+      - "Redeploy application from Git"
+      - "Verify with health check"
+
+###############################################################################
+# 9. TESTING
+###############################################################################
+
+testing:
+  local_testing:
+    command: "uv run pytest"
+    coverage: "uv run pytest --cov=src --cov-report=html"
+    watch_mode: "uv run pytest-watch"
+
+  ci_testing:
+    trigger: "On every pull request"
+    requirements: "All tests must pass"
+    coverage_requirement: ">= 80%"
+
+  manual_testing:
+    api_testing:
+      tool: "FastAPI automatic docs at /docs"
+      alternative: "Use curl, HTTPie, or Postman"
+    scenarios: "Test the 7 policy scenarios from README.md"
+
+###############################################################################
+# 10. COST ESTIMATION
+###############################################################################
+
+cost:
+  development:
+    cost: "$0"
+    resources: "Local machine only"
+
+  hobby_production:
+    paas_options:
+      heroku:
+        tier: "Eco ($5/month for app + $5/month for database)"
+        total: "$10/month"
+
+      railway:
+        tier: "Hobby ($5/month for app + database)"
+        total: "$5/month"
+
+      render:
+        tier: "Free tier available"
+        total: "$0-7/month"
+
+    vps_option:
+      provider: "DigitalOcean, Linode, Vultr"
+      size: "Basic Droplet ($6/month)"
+      includes: "App + database on same server"
+      total: "$6/month"
+
+  small_business:
+    setup: "Load balancer + 2 instances + managed database"
+    estimated: "$50-100/month"
+
+###############################################################################
+# 11. SCALING ROADMAP
+###############################################################################
+
+scaling:
+  phase_1_mvp:
+    current: "Single instance deployment"
+    capacity: "10-100 requests/second"
+    cost: "$5-10/month"
+    when_to_upgrade: "Consistent > 80% CPU or response time > 500ms"
+
+  phase_2_horizontal:
+    upgrade: "Add load balancer + 2-3 instances"
+    capacity: "100-500 requests/second"
+    cost: "$50-100/month"
+    when_to_upgrade: "Consistent > 500 requests/second"
+
+  phase_3_enterprise:
+    upgrade: "Kubernetes + auto-scaling + monitoring"
+    capacity: "500-1000+ requests/second"
+    cost: "$500+/month"
+    at_this_point: "Consider hiring DevOps engineer"
+
+###############################################################################
+# 12. CHECKLIST FOR DEPLOYMENT
+###############################################################################
+
+deployment_checklist:
+  before_first_deploy:
+    - "✓ All tests passing"
+    - "✓ Environment variables configured"
+    - "✓ Database initialized"
+    - "✓ .env file not committed to git"
+    - "✓ Health check endpoint working"
+
+  production_deploy:
+    - "✓ Backup current database"
+    - "✓ Run migrations"
+    - "✓ Deploy new version"
+    - "✓ Test health check endpoint"
+    - "✓ Test one API call manually"
+    - "✓ Monitor logs for 5 minutes"
+
+  if_problems:
+    - "Check logs: docker logs or platform logs"
+    - "Check database connection"
+    - "Check environment variables"
+    - "Rollback if needed: git revert && redeploy"
+
+###############################################################################
+# END OF SIMPLIFIED DEVOPS PLAN
+###############################################################################

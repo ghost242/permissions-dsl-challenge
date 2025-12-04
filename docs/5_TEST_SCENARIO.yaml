@@ -1,0 +1,629 @@
+###############################################################################
+# Test Scenarios
+# Project: Permission DSL Challenge
+# Version: 1.0.0
+# Created: Stage 4 - Test Planning
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "Python Senior Developer & Database Administrator"
+  created_date: "2025-12-04"
+  source: "README.md permission scenarios"
+
+###############################################################################
+# OVERVIEW
+###############################################################################
+
+overview:
+  purpose: "Detailed test scenarios for all 7 permission cases from README.md"
+  test_file: "tests/integration/test_scenarios.py"
+  approach: "End-to-end integration tests with real database and API"
+
+###############################################################################
+# SCENARIO 1: Creator Has Full Access
+###############################################################################
+
+scenario_1:
+  name: "Creator Has Full Access"
+  description: "Document creator should have all permissions (view, edit, delete, share)"
+  test_function: "test_scenario_1_creator_has_full_access"
+
+  given:
+    entities:
+      user:
+        id: "user1"
+        email: "creator@example.com"
+        name: "Document Creator"
+
+      team:
+        id: "team1"
+        name: "Test Team"
+        plan: "pro"
+
+      project:
+        id: "proj1"
+        name: "Test Project"
+        teamId: "team1"
+        visibility: "private"
+
+      document:
+        id: "doc1"
+        title: "Test Document"
+        projectId: "proj1"
+        creatorId: "user1"
+        deletedAt: null
+        publicLinkEnabled: false
+
+      policy:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        policies:
+          - description: "Creator has full access"
+            permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+            effect: "allow"
+            filter:
+              - prop: "document.creatorId"
+                op: "=="
+                value: "user.id"
+
+  when:
+    action: "User1 attempts to access doc1"
+
+  then:
+    expected_results:
+      - permission: "can_view"
+        allowed: true
+        reason: "Creator filter matches (document.creatorId == user.id)"
+
+      - permission: "can_edit"
+        allowed: true
+        reason: "Creator filter matches"
+
+      - permission: "can_delete"
+        allowed: true
+        reason: "Creator filter matches"
+
+      - permission: "can_share"
+        allowed: true
+        reason: "Creator filter matches"
+
+  api_calls:
+    - method: "GET"
+      path: "/api/v1/permission-check"
+      params:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        userId: "user1"
+        action: "can_view"
+      expected_status: 200
+      expected_body:
+        allowed: true
+        message: "Allow"
+
+###############################################################################
+# SCENARIO 2: Team Admin Has Access
+###############################################################################
+
+scenario_2:
+  name: "Team Admin Has Full Access"
+  description: "Team admins should have full access to all team documents"
+  test_function: "test_scenario_2_team_admin_has_access"
+
+  given:
+    entities:
+      user:
+        id: "admin1"
+        email: "admin@example.com"
+        name: "Team Admin"
+
+      team:
+        id: "team1"
+        name: "Test Team"
+        plan: "pro"
+
+      team_membership:
+        userId: "admin1"
+        teamId: "team1"
+        role: "admin"
+
+      project:
+        id: "proj1"
+        teamId: "team1"
+
+      document:
+        id: "doc1"
+        projectId: "proj1"
+        creatorId: "otheruser"
+
+      policy:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        policies:
+          - description: "Team admins have full access"
+            permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+            effect: "allow"
+            filter:
+              - prop: "teamMembership.role"
+                op: "=="
+                value: "admin"
+
+  when:
+    action: "Admin1 attempts to access doc1 (created by someone else)"
+
+  then:
+    expected_results:
+      - permission: "can_view"
+        allowed: true
+        reason: "Admin role in team matches filter"
+
+      - permission: "can_edit"
+        allowed: true
+
+      - permission: "can_delete"
+        allowed: true
+
+      - permission: "can_share"
+        allowed: true
+
+###############################################################################
+# SCENARIO 3: Project Member Has Role-Based Access
+###############################################################################
+
+scenario_3:
+  name: "Project Member Has Role-Based Access"
+  description: "Project members have permissions based on their role (viewer/editor)"
+  test_function: "test_scenario_3_project_member_has_access"
+
+  given:
+    entities:
+      user_editor:
+        id: "editor1"
+        email: "editor@example.com"
+        name: "Project Editor"
+
+      user_viewer:
+        id: "viewer1"
+        email: "viewer@example.com"
+        name: "Project Viewer"
+
+      team:
+        id: "team1"
+
+      project:
+        id: "proj1"
+        teamId: "team1"
+
+      project_membership_editor:
+        userId: "editor1"
+        projectId: "proj1"
+        role: "editor"
+
+      project_membership_viewer:
+        userId: "viewer1"
+        projectId: "proj1"
+        role: "viewer"
+
+      document:
+        id: "doc1"
+        projectId: "proj1"
+        creatorId: "creator1"
+
+      policy_editor:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        policies:
+          - description: "Editors can view and edit"
+            permissions: ["can_view", "can_edit"]
+            effect: "allow"
+            filter:
+              - prop: "projectMembership.role"
+                op: "=="
+                value: "editor"
+
+      policy_viewer:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        policies:
+          - description: "Viewers can only view"
+            permissions: ["can_view"]
+            effect: "allow"
+            filter:
+              - prop: "projectMembership.role"
+                op: "=="
+                value: "viewer"
+
+  when:
+    action: "Editor and viewer attempt various actions"
+
+  then:
+    expected_results:
+      editor:
+        - permission: "can_view"
+          allowed: true
+          reason: "Editor role matches filter"
+
+        - permission: "can_edit"
+          allowed: true
+          reason: "Editor role has edit permission"
+
+        - permission: "can_delete"
+          allowed: false
+          reason: "Editor policy doesn't include can_delete"
+
+      viewer:
+        - permission: "can_view"
+          allowed: true
+          reason: "Viewer role matches filter"
+
+        - permission: "can_edit"
+          allowed: false
+          reason: "Viewer policy doesn't include can_edit"
+
+###############################################################################
+# SCENARIO 4: Public Link Allows View Access
+###############################################################################
+
+scenario_4:
+  name: "Public Link Allows View Access"
+  description: "Anyone can view a document when publicLinkEnabled is true"
+  test_function: "test_scenario_4_public_link_enabled"
+
+  given:
+    entities:
+      user:
+        id: "anonymous"
+        email: "anonymous@example.com"
+        name: "Anonymous User"
+
+      team:
+        id: "team1"
+
+      project:
+        id: "proj1"
+        teamId: "team1"
+
+      document:
+        id: "doc_public"
+        projectId: "proj1"
+        creatorId: "creator1"
+        publicLinkEnabled: true  # PUBLIC LINK ENABLED
+
+      policy:
+        resourceId: "urn:resource:team1:proj1:doc_public"
+        policies:
+          - description: "Public link allows view access"
+            permissions: ["can_view"]
+            effect: "allow"
+            filter:
+              - prop: "document.publicLinkEnabled"
+                op: "=="
+                value: true
+
+  when:
+    action: "Anonymous user (not member of team/project) attempts to view"
+
+  then:
+    expected_results:
+      - permission: "can_view"
+        allowed: true
+        reason: "document.publicLinkEnabled is true"
+
+      - permission: "can_edit"
+        allowed: false
+        reason: "Policy only grants can_view, not can_edit"
+
+      - permission: "can_delete"
+        allowed: false
+        reason: "Policy only grants can_view"
+
+###############################################################################
+# SCENARIO 5: Deleted Document Denies All Access
+###############################################################################
+
+scenario_5:
+  name: "Deleted Document Denies All Access"
+  description: "No one can access a deleted document (deletedAt is not null)"
+  test_function: "test_scenario_5_deleted_document_denied"
+
+  given:
+    entities:
+      user:
+        id: "user1"
+        email: "creator@example.com"
+        name: "Document Creator"
+
+      team:
+        id: "team1"
+
+      project:
+        id: "proj1"
+        teamId: "team1"
+
+      document:
+        id: "doc_deleted"
+        projectId: "proj1"
+        creatorId: "user1"
+        deletedAt: "2025-01-01T00:00:00Z"  # DELETED
+
+      policy:
+        resourceId: "urn:resource:team1:proj1:doc_deleted"
+        policies:
+          - description: "Creator has full access"
+            permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+            effect: "allow"
+            filter:
+              - prop: "document.creatorId"
+                op: "=="
+                value: "user.id"
+
+  when:
+    action: "Creator attempts to access their own deleted document"
+
+  then:
+    expected_results:
+      - permission: "can_view"
+        allowed: false
+        reason: "Document is deleted (deletedAt is not null)"
+
+      - permission: "can_edit"
+        allowed: false
+        reason: "Document is deleted"
+
+      - permission: "can_delete"
+        allowed: false
+        reason: "Document is already deleted"
+
+      - permission: "can_share"
+        allowed: false
+        reason: "Document is deleted"
+
+    note: "Evaluator checks document.is_deleted before evaluating policies"
+
+###############################################################################
+# SCENARIO 6: Explicit Deny Overrides Allow
+###############################################################################
+
+scenario_6:
+  name: "Explicit Deny Overrides Allow"
+  description: "DENY policy takes precedence over ALLOW policy"
+  test_function: "test_scenario_6_explicit_deny_overrides_allow"
+
+  given:
+    entities:
+      user:
+        id: "user1"
+        email: "blocked@example.com"
+        name: "Blocked User"
+
+      team:
+        id: "team1"
+
+      project:
+        id: "proj1"
+        teamId: "team1"
+
+      team_membership:
+        userId: "user1"
+        teamId: "team1"
+        role: "editor"
+
+      document:
+        id: "doc1"
+        projectId: "proj1"
+        creatorId: "creator1"
+
+      policy:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        policies:
+          - description: "Allow editors to edit"
+            permissions: ["can_view", "can_edit"]
+            effect: "allow"
+            filter:
+              - prop: "teamMembership.role"
+                op: "=="
+                value: "editor"
+
+          - description: "Deny user1 explicitly"
+            permissions: ["can_edit", "can_delete"]
+            effect: "deny"
+            filter:
+              - prop: "user.id"
+                op: "=="
+                value: "user1"
+
+  when:
+    action: "User1 (who is an editor) attempts to edit the document"
+
+  then:
+    expected_results:
+      - permission: "can_view"
+        allowed: true
+        reason: "ALLOW policy matches, no DENY policy for can_view"
+
+      - permission: "can_edit"
+        allowed: false
+        reason: "DENY policy takes precedence over ALLOW (DENY > ALLOW)"
+
+      - permission: "can_delete"
+        allowed: false
+        reason: "DENY policy explicitly denies can_delete"
+
+    precedence_rule: "DENY > ALLOW > default DENY"
+
+###############################################################################
+# SCENARIO 7: No Permission Results in Default Deny
+###############################################################################
+
+scenario_7:
+  name: "No Permission Results in Default Deny"
+  description: "Users without any matching policies are denied by default"
+  test_function: "test_scenario_7_no_permission_default_deny"
+
+  given:
+    entities:
+      user:
+        id: "stranger"
+        email: "stranger@example.com"
+        name: "Stranger User"
+
+      team:
+        id: "team1"
+
+      project:
+        id: "proj1"
+        teamId: "team1"
+
+      document:
+        id: "doc1"
+        projectId: "proj1"
+        creatorId: "creator1"
+        publicLinkEnabled: false
+
+      policy:
+        resourceId: "urn:resource:team1:proj1:doc1"
+        policies:
+          - description: "Creator has full access"
+            permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+            effect: "allow"
+            filter:
+              - prop: "document.creatorId"
+                op: "=="
+                value: "user.id"
+
+      # Stranger is NOT the creator
+      # Stranger is NOT in the team
+      # Stranger is NOT in the project
+      # Document public link is disabled
+
+  when:
+    action: "Stranger attempts to access doc1"
+
+  then:
+    expected_results:
+      - permission: "can_view"
+        allowed: false
+        reason: "No matching ALLOW policy, default DENY"
+
+      - permission: "can_edit"
+        allowed: false
+        reason: "No matching ALLOW policy, default DENY"
+
+      - permission: "can_delete"
+        allowed: false
+        reason: "No matching ALLOW policy, default DENY"
+
+      - permission: "can_share"
+        allowed: false
+        reason: "No matching ALLOW policy, default DENY"
+
+    precedence_rule: "No matching policies → default DENY"
+
+###############################################################################
+# TEST IMPLEMENTATION TEMPLATE
+###############################################################################
+
+test_implementation_template: |
+  def test_scenario_X_description(test_client, test_db):
+      """
+      Scenario X: Description
+
+      Given [preconditions]
+      When [action]
+      Then [expected results]
+      """
+      # ===== ARRANGE: Setup test data =====
+
+      # Insert entities into test database
+      repo = Repository(test_db)
+
+      # Create user
+      cursor = test_db.get_connection().cursor()
+      cursor.execute(
+          "INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
+          ("user1", "test@example.com", "Test User")
+      )
+
+      # Create team, project, document, memberships
+      # ...
+
+      # Create policy
+      policy_doc = ResourcePolicyDocument(
+          resource=ResourceInfo(
+              resourceId="urn:resource:team1:proj1:doc1",
+              creatorId="user1"
+          ),
+          policies=[...]
+      )
+      repo.save_resource_policy(policy_doc)
+
+      test_db.commit()
+
+      # ===== ACT: Make API calls =====
+
+      response = test_client.get(
+          "/api/v1/permission-check",
+          params={
+              "resourceId": "urn:resource:team1:proj1:doc1",
+              "userId": "user1",
+              "action": "can_view"
+          }
+      )
+
+      # ===== ASSERT: Verify results =====
+
+      assert response.status_code == 200
+      data = response.json()
+      assert data["allowed"] is True
+      assert data["message"] == "Allow"
+      assert len(data["evaluation_details"]["matched_policies"]) > 0
+
+###############################################################################
+# TEST EXECUTION ORDER
+###############################################################################
+
+execution_order:
+  note: "Tests should be independent and can run in any order"
+  recommended_order:
+    - "Scenario 1: Creator Access (happy path)"
+    - "Scenario 2: Team Admin Access (role-based)"
+    - "Scenario 3: Project Member Access (multiple roles)"
+    - "Scenario 4: Public Link Access (special condition)"
+    - "Scenario 7: Default Deny (negative case)"
+    - "Scenario 5: Deleted Document (edge case)"
+    - "Scenario 6: Explicit Deny Override (precedence)"
+
+###############################################################################
+# COMMON TEST UTILITIES
+###############################################################################
+
+test_utilities:
+  helper_functions:
+    - name: "create_test_user"
+      purpose: "Create user entity in test database"
+      signature: "create_test_user(db, id, email, name) -> User"
+
+    - name: "create_test_document"
+      purpose: "Create document entity in test database"
+      signature: "create_test_document(db, id, title, project_id, creator_id, **kwargs) -> Document"
+
+    - name: "create_test_policy"
+      purpose: "Create and save policy document"
+      signature: "create_test_policy(db, resource_id, policies) -> ResourcePolicyDocument"
+
+    - name: "check_permission"
+      purpose: "Helper to call permission-check API"
+      signature: "check_permission(client, resource_id, user_id, action) -> bool"
+
+###############################################################################
+# SUCCESS CRITERIA
+###############################################################################
+
+success_criteria:
+  - "All 7 scenarios pass"
+  - "Each scenario tests positive and negative cases"
+  - "Scenarios run independently"
+  - "Total execution time < 10 seconds"
+  - "Clear failure messages when assertions fail"
+  - "Test coverage for scenarios > 95%"
+
+###############################################################################
+# END OF TEST SCENARIO DOCUMENT
+###############################################################################

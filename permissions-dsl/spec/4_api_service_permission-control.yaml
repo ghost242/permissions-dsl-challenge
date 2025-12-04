@@ -1,0 +1,606 @@
+###############################################################################
+# API Service Specification
+# Service: Permission Control
+# Version: 1.0.0
+# Created: Stage 3 - System Spec Generation
+###############################################################################
+
+metadata:
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "Product Owner"
+  created_date: "2025-12-04"
+  framework: "FastAPI"
+  base_url: "/api/v1"
+
+###############################################################################
+# 1. API OVERVIEW
+###############################################################################
+
+overview:
+  purpose: "REST API for policy management and permission evaluation"
+  endpoints_count: 4
+  authentication: "Bearer token (JWT) - optional for this challenge"
+  content_type: "application/json"
+
+  core_endpoints:
+    - "GET /resource/policy - Fetch resource policy"
+    - "POST /resource/policy - Create/update resource policy"
+    - "GET /permission-check - Evaluate permission"
+    - "GET /health - Health check"
+
+###############################################################################
+# 2. ENDPOINT SPECIFICATIONS
+###############################################################################
+
+endpoints:
+  health_check:
+    method: "GET"
+    path: "/health"
+    summary: "Service health check"
+    description: "Check if API and database are operational"
+    authentication_required: false
+
+    request:
+      parameters: []
+      body: null
+
+    response:
+      success:
+        status_code: 200
+        schema:
+          type: "object"
+          properties:
+            status:
+              type: "string"
+              example: "healthy"
+            database:
+              type: "string"
+              example: "connected"
+            version:
+              type: "string"
+              example: "1.0.0"
+            timestamp:
+              type: "string"
+              format: "datetime"
+              example: "2025-12-04T10:00:00Z"
+        example:
+          status: "healthy"
+          database: "connected"
+          version: "1.0.0"
+          timestamp: "2025-12-04T10:00:00Z"
+
+      error:
+        status_code: 503
+        schema:
+          type: "object"
+          properties:
+            status:
+              type: "string"
+              example: "unhealthy"
+            database:
+              type: "string"
+              example: "disconnected"
+            error:
+              type: "string"
+              example: "Database connection failed"
+        example:
+          status: "unhealthy"
+          database: "disconnected"
+          error: "Database connection failed"
+
+    implementation:
+      file: "src/api/routes.py"
+      function: "health_check()"
+      logic:
+        - "Check database connection"
+        - "Return status and version info"
+
+  fetch_resource_policy:
+    method: "GET"
+    path: "/resource/policy"
+    summary: "Fetch policy document for a resource"
+    description: "Retrieve the complete policy document for a given resource ID"
+    authentication_required: false
+
+    request:
+      parameters:
+        - name: "resourceId"
+          in: "query"
+          required: true
+          type: "string"
+          description: "Resource URN (e.g., urn:resource:team1:proj1:doc1)"
+          pattern: "^urn:resource(:[a-zA-Z0-9]+){3}$"
+          example: "urn:resource:team1:proj1:doc1"
+
+      body: null
+
+    response:
+      success:
+        status_code: 200
+        schema:
+          $ref: "#/schemas/ResourcePolicyDocument"
+        example:
+          resource:
+            resourceId: "urn:resource:team1:proj1:doc1"
+            creatorId: "user1"
+          policies:
+            - description: "Creator has full access"
+              permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+              effect: "allow"
+              filter:
+                - prop: "document.creatorId"
+                  op: "=="
+                  value: "user.id"
+
+      errors:
+        - status_code: 400
+          reason: "Invalid resourceId format"
+          example:
+            error: "VALIDATION_ERROR"
+            message: "Invalid resourceId format. Expected: urn:resource:{teamId}:{projectId}:{docId}"
+
+        - status_code: 404
+          reason: "Resource policy not found"
+          example:
+            error: "NOT_FOUND"
+            message: "Resource policy not found for resourceId: urn:resource:team1:proj1:doc1"
+
+        - status_code: 500
+          reason: "Internal server error"
+          example:
+            error: "INTERNAL_ERROR"
+            message: "Failed to fetch resource policy"
+
+    implementation:
+      file: "src/api/routes.py"
+      function: "get_resource_policy(resourceId: str)"
+      logic:
+        - "Validate resourceId format"
+        - "Query database for resource_policies by resource_id"
+        - "If not found, return 404"
+        - "Return policy document"
+      dependencies:
+        - "src/database/repository.py: get_resource_policy()"
+        - "src/models/policies.py: ResourcePolicyDocument"
+
+  create_update_resource_policy:
+    method: "POST"
+    path: "/resource/policy"
+    summary: "Create or update resource policy"
+    description: "Apply or update permission policy for a resource"
+    authentication_required: false
+
+    request:
+      parameters: []
+
+      body:
+        required: true
+        content_type: "application/json"
+        schema:
+          oneOf:
+            - $ref: "#/schemas/ResourcePolicyDocument"
+            - $ref: "#/schemas/PolicyOptions"
+        examples:
+          full_policy:
+            summary: "Complete policy document"
+            value:
+              resource:
+                resourceId: "urn:resource:team1:proj1:doc1"
+                creatorId: "user1"
+              policies:
+                - description: "Allow creator full access"
+                  permissions: ["can_view", "can_edit", "can_delete", "can_share"]
+                  effect: "allow"
+                  filter:
+                    - prop: "document.creatorId"
+                      op: "=="
+                      value: "user.id"
+
+          simple_options:
+            summary: "Simple options format"
+            value:
+              resourceId: "urn:resource:team1:proj1:doc1"
+              action: "can_edit"
+              target: "user123"
+
+    response:
+      success:
+        status_code: 201
+        schema:
+          type: "object"
+          properties:
+            message:
+              type: "string"
+            resourceId:
+              type: "string"
+            version:
+              type: "integer"
+        example:
+          message: "Policy created successfully"
+          resourceId: "urn:resource:team1:proj1:doc1"
+          version: 1
+
+      errors:
+        - status_code: 400
+          reason: "Invalid policy document"
+          example:
+            error: "VALIDATION_ERROR"
+            message: "Invalid policy structure"
+            details: ["Missing required field: resourceId"]
+
+        - status_code: 500
+          reason: "Failed to save policy"
+          example:
+            error: "INTERNAL_ERROR"
+            message: "Failed to save policy to database"
+
+    implementation:
+      file: "src/api/routes.py"
+      function: "create_resource_policy(policy: Union[ResourcePolicyDocument, PolicyOptions])"
+      logic:
+        - "Determine if input is full policy or options"
+        - "If options, use Builder to generate policy document"
+        - "Validate policy document structure"
+        - "Check if policy exists (UPDATE) or not (INSERT)"
+        - "Save to database"
+        - "Return success message with version"
+      dependencies:
+        - "src/components/builder.py: build_policy_document()"
+        - "src/database/repository.py: save_resource_policy()"
+        - "src/models/policies.py: ResourcePolicyDocument, PolicyOptions"
+
+  evaluate_permission:
+    method: "GET"
+    path: "/permission-check"
+    summary: "Evaluate if user has permission for action on resource"
+    description: "Check whether a user has a specific permission on a resource"
+    authentication_required: false
+
+    request:
+      parameters:
+        - name: "resourceId"
+          in: "query"
+          required: true
+          type: "string"
+          description: "Resource URN"
+          example: "urn:resource:team1:proj1:doc1"
+
+        - name: "userId"
+          in: "query"
+          required: true
+          type: "string"
+          description: "User ID"
+          example: "user1"
+
+        - name: "action"
+          in: "query"
+          required: true
+          type: "string"
+          enum: ["can_view", "can_edit", "can_delete", "can_share"]
+          description: "Permission to check"
+          example: "can_edit"
+
+      body: null
+
+    response:
+      success:
+        status_code: 200
+        schema:
+          type: "object"
+          properties:
+            allowed:
+              type: "boolean"
+            message:
+              type: "string"
+            evaluation_details:
+              type: "object"
+              optional: true
+        examples:
+          allowed:
+            summary: "Permission granted"
+            value:
+              allowed: true
+              message: "Allow"
+              evaluation_details:
+                matched_policies: ["policy_creator_access"]
+                evaluation_time_ms: 12
+
+          denied:
+            summary: "Permission denied"
+            value:
+              allowed: false
+              message: "Deny"
+              reason: "No matching allow policy found"
+
+      errors:
+        - status_code: 400
+          reason: "Invalid parameters"
+          example:
+            error: "VALIDATION_ERROR"
+            message: "Invalid action value. Must be one of: can_view, can_edit, can_delete, can_share"
+
+        - status_code: 404
+          reason: "Resource or user not found"
+          examples:
+            resource_not_found:
+              error: "NOT_FOUND"
+              message: "Document not found for resourceId: urn:resource:team1:proj1:doc1"
+            user_not_found:
+              error: "NOT_FOUND"
+              message: "User not found for userId: user123"
+            policy_not_found:
+              error: "NOT_FOUND"
+              message: "Resource policy not found"
+
+        - status_code: 500
+          reason: "Internal error during evaluation"
+          example:
+            error: "INTERNAL_ERROR"
+            message: "Failed to evaluate permission"
+
+    implementation:
+      file: "src/api/routes.py"
+      function: "check_permission(resourceId: str, userId: str, action: str)"
+      logic:
+        - "Validate input parameters"
+        - "Fetch document from database"
+        - "Fetch user from database"
+        - "Fetch resource policy from database"
+        - "Fetch user policy from database (optional)"
+        - "Call Evaluator.evaluate_permission()"
+        - "Return allow/deny result"
+      dependencies:
+        - "src/database/repository.py: get_document(), get_user(), get_resource_policy(), get_user_policy()"
+        - "src/components/evaluator.py: evaluate_permission()"
+        - "src/models/entities.py: User, Document"
+        - "src/models/policies.py: ResourcePolicyDocument, UserPolicyDocument"
+
+###############################################################################
+# 3. SHARED SCHEMAS
+###############################################################################
+
+schemas:
+  Filter:
+    type: "object"
+    required: ["prop", "op", "value"]
+    properties:
+      prop:
+        type: "string"
+        description: "Property path (e.g., 'user.id', 'document.creatorId')"
+        example: "document.creatorId"
+      op:
+        type: "string"
+        enum: ["==", "!=", ">", ">=", "<", "<=", "<>", "in", "not in", "has", "has not"]
+        description: "Comparison operator"
+        example: "=="
+      value:
+        type: "any"
+        description: "Value to compare against"
+        example: "user.id"
+
+  ResourceInfo:
+    type: "object"
+    required: ["resourceId", "creatorId"]
+    properties:
+      resourceId:
+        type: "string"
+        pattern: "^urn:resource(:[a-zA-Z0-9]+){3}$"
+        example: "urn:resource:team1:proj1:doc1"
+      creatorId:
+        type: "string"
+        example: "user1"
+
+  ResourcePolicy:
+    type: "object"
+    required: ["permissions", "effect"]
+    properties:
+      description:
+        type: "string"
+        optional: true
+        example: "Creator has full access"
+      permissions:
+        type: "array"
+        items:
+          type: "string"
+          enum: ["can_view", "can_edit", "can_delete", "can_share"]
+        example: ["can_view", "can_edit"]
+      effect:
+        type: "string"
+        enum: ["allow", "deny"]
+        example: "allow"
+      filter:
+        type: "array"
+        items:
+          $ref: "#/schemas/Filter"
+        optional: true
+
+  ResourcePolicyDocument:
+    type: "object"
+    required: ["resource", "policies"]
+    properties:
+      resource:
+        $ref: "#/schemas/ResourceInfo"
+      policies:
+        type: "array"
+        items:
+          $ref: "#/schemas/ResourcePolicy"
+
+  PolicyOptions:
+    type: "object"
+    required: ["resourceId", "action", "target"]
+    description: "Simplified format for creating policies"
+    properties:
+      resourceId:
+        type: "string"
+        example: "urn:resource:team1:proj1:doc1"
+      action:
+        type: "string"
+        enum: ["can_view", "can_edit", "can_delete", "can_share"]
+        example: "can_edit"
+      target:
+        type: "string"
+        description: "Target user ID or role"
+        example: "user123"
+
+  ErrorResponse:
+    type: "object"
+    properties:
+      error:
+        type: "string"
+        description: "Error code"
+        example: "VALIDATION_ERROR"
+      message:
+        type: "string"
+        description: "Human-readable error message"
+        example: "Invalid input parameters"
+      details:
+        type: "array"
+        items:
+          type: "string"
+        optional: true
+        description: "Additional error details"
+
+###############################################################################
+# 4. IMPLEMENTATION PLAN
+###############################################################################
+
+implementation:
+  file_structure:
+    api_layer:
+      - file: "src/api/__init__.py"
+        purpose: "Package initialization"
+
+      - file: "src/api/routes.py"
+        purpose: "FastAPI route handlers"
+        endpoints:
+          - "GET /health"
+          - "GET /resource/policy"
+          - "POST /resource/policy"
+          - "GET /permission-check"
+
+      - file: "src/api/dependencies.py"
+        purpose: "Dependency injection (database connection, etc.)"
+
+    main_app:
+      - file: "src/main.py"
+        purpose: "FastAPI application initialization"
+        includes:
+          - "Create FastAPI app"
+          - "Register routers"
+          - "Configure CORS"
+          - "Add exception handlers"
+
+  dependencies:
+    - "fastapi>=0.100.0"
+    - "uvicorn>=0.20.0"
+    - "pydantic>=2.0.0"
+
+  error_handling:
+    strategy: "FastAPI exception handlers"
+    handlers:
+      - "ValidationError → 400 response"
+      - "NotFoundError → 404 response"
+      - "PermissionDeniedError → 403 response"
+      - "Exception → 500 response with logging"
+
+  logging:
+    level: "INFO in production, DEBUG in local"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    log_requests: "Log all incoming requests with method, path, status"
+
+###############################################################################
+# 5. TESTING PLAN
+###############################################################################
+
+testing:
+  unit_tests:
+    location: "tests/unit/test_api.py"
+    framework: "pytest with FastAPI TestClient"
+
+    test_cases:
+      - name: "test_health_check_success"
+        description: "Health endpoint returns 200 when database connected"
+
+      - name: "test_health_check_failure"
+        description: "Health endpoint returns 503 when database disconnected"
+
+      - name: "test_get_resource_policy_success"
+        description: "Returns policy document for valid resourceId"
+
+      - name: "test_get_resource_policy_not_found"
+        description: "Returns 404 for non-existent resourceId"
+
+      - name: "test_get_resource_policy_invalid_format"
+        description: "Returns 400 for invalid resourceId format"
+
+      - name: "test_create_policy_with_full_document"
+        description: "Creates policy from complete document"
+
+      - name: "test_create_policy_with_options"
+        description: "Creates policy from simple options using Builder"
+
+      - name: "test_create_policy_invalid"
+        description: "Returns 400 for invalid policy structure"
+
+      - name: "test_permission_check_allow"
+        description: "Returns allowed=true for valid permission"
+
+      - name: "test_permission_check_deny"
+        description: "Returns allowed=false when permission denied"
+
+      - name: "test_permission_check_deleted_document"
+        description: "Returns allowed=false for deleted documents"
+
+      - name: "test_permission_check_missing_params"
+        description: "Returns 400 when required params missing"
+
+  integration_tests:
+    location: "tests/integration/test_api_integration.py"
+    description: "Test API with real database"
+
+    test_scenarios:
+      - "Complete flow: Create policy → Check permission"
+      - "Test all 7 policy scenarios from README.md"
+      - "Test error handling with missing database records"
+
+###############################################################################
+# 6. API DOCUMENTATION
+###############################################################################
+
+documentation:
+  auto_generated: true
+  tool: "FastAPI automatic documentation"
+  endpoints:
+    swagger_ui: "http://localhost:8000/docs"
+    redoc: "http://localhost:8000/redoc"
+    openapi_json: "http://localhost:8000/openapi.json"
+
+  features:
+    - "Interactive API testing"
+    - "Request/response examples"
+    - "Schema definitions"
+    - "Try it out functionality"
+
+###############################################################################
+# 7. PERFORMANCE TARGETS
+###############################################################################
+
+performance:
+  latency:
+    health_check: "< 10ms"
+    get_resource_policy: "< 50ms"
+    create_policy: "< 100ms"
+    permission_check: "< 200ms (p95)"
+
+  throughput:
+    target: "100 requests/second per instance"
+
+  optimization:
+    - "Use database connection pooling"
+    - "Cache frequently accessed policies (future)"
+    - "Minimize database queries"
+
+###############################################################################
+# END OF API SERVICE SPECIFICATION
+###############################################################################

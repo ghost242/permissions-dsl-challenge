@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Permission Control API Service
+  permission-control:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: permission-control
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - SQLITE_PATH=${SQLITE_PATH:-/app/data/permissions.db}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-permissions}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./data:/app/data
+      - ./src:/app/src  # Mount source for development
+    depends_on:
+      - postgres
+    networks:
+      - permission-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # PostgreSQL Database (optional, for production-like testing)
+  postgres:
+    image: postgres:15-alpine
+    container_name: permission-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DATABASE:-permissions}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d/
+    networks:
+      - permission-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  permission-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local

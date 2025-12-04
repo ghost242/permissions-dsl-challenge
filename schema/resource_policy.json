@@ -1,0 +1,87 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:resource:policy:document",
+    "title": "ResourcePolicy",
+    "type": "object",
+    "properties": {
+        "resource": {
+            "type": "object",
+            "properties": {
+                "resourceId": {
+                    "type": "string",
+                    "description": "Representation resource name followed by URN(urn:resource:{teamId}:{projectId}:{documentId})",
+                    "pattern": "^urn:resource(:[a-zA-Z0-9]+){3}$"
+                },
+                "creatorId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "resourceId",
+                "creatorId"
+            ]
+        },
+        "policies": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/resource_policy"
+            }
+        }
+    },
+    "required": [
+        "resource",
+        "policies"
+    ],
+    "$defs": {
+        "resource_policy": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "can_view",
+                            "can_edit",
+                            "can_delete",
+                            "can_share"
+                        ]
+                    }
+                },
+                "effect": {
+                    "enum": [
+                        "allow",
+                        "deny"
+                    ]
+                },
+                "filter": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "description": "apply condition option",
+                        "properties": {
+                            "prop": {
+                                "type": "string"
+                            },
+                            "op": {
+                                "enum": ["==", "!=", ">", ">=", "<", "<=", "<>", "in", "not in", "has", "has not"]
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "minContains": 1,
+                    "uniqueItems": true
+                }
+            },
+            "required": [
+                "permissions",
+                "effect",
+                "targets"
+            ]
+        }
+    }
+}

@@ -1,0 +1,516 @@
+###############################################################################
+# Test Strategy
+# Project: Permission DSL Challenge
+# Version: 1.0.0
+# Created: Stage 4 - Test Planning
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "Python Senior Developer"
+  created_date: "2025-12-04"
+
+###############################################################################
+# 1. TESTING PHILOSOPHY
+###############################################################################
+
+testing_philosophy:
+  principles:
+    - name: "Test First, Code Second"
+      description: "Write tests to clarify requirements before implementation"
+
+    - name: "Fast Feedback"
+      description: "Tests should run quickly (< 30s) for rapid development cycles"
+
+    - name: "Isolation"
+      description: "Each test should be independent and not rely on test execution order"
+
+    - name: "Clarity Over Cleverness"
+      description: "Tests should be obvious and easy to understand"
+
+    - name: "Fail Fast"
+      description: "Tests should fail immediately when something breaks"
+
+  testing_pyramid:
+    unit_tests:
+      percentage: "70%"
+      reason: "Fast, isolated tests of individual components"
+
+    integration_tests:
+      percentage: "25%"
+      reason: "Test component interactions and API contracts"
+
+    end_to_end_tests:
+      percentage: "5%"
+      reason: "Test critical user flows (7 README scenarios)"
+
+###############################################################################
+# 2. UNIT TESTING STRATEGY
+###############################################################################
+
+unit_testing:
+  definition: "Tests that verify a single unit of code in isolation"
+
+  characteristics:
+    - "No database dependencies"
+    - "No network calls"
+    - "Use mocks/stubs for dependencies"
+    - "Run in milliseconds"
+    - "100% deterministic"
+
+  naming_convention:
+    pattern: "test_<component>_<scenario>_<expected_result>"
+    examples:
+      - "test_filter_engine_eq_operator_returns_true"
+      - "test_evaluator_deny_overrides_allow_returns_false"
+      - "test_builder_creates_policy_from_options_returns_document"
+
+  test_structure:
+    pattern: "Arrange-Act-Assert (AAA)"
+    example: |
+      def test_filter_engine_eq_operator_matching_values():
+          # Arrange
+          engine = FilterEngine()
+          filter_cond = Filter(prop="user.id", op="==", value="user123")
+          context = {"user": {"id": "user123"}}
+
+          # Act
+          result = engine.evaluate_filter(filter_cond, context)
+
+          # Assert
+          assert result is True
+
+  mocking_strategy:
+    when_to_mock:
+      - "External dependencies (database, API calls)"
+      - "Slow operations (file I/O, network)"
+      - "Non-deterministic behavior (time, random)"
+
+    tools:
+      - "unittest.mock.Mock for objects"
+      - "unittest.mock.patch for functions"
+      - "pytest fixtures for reusable mocks"
+
+    example: |
+      @patch('src.database.repository.Repository.get_user')
+      def test_evaluator_with_mocked_user(mock_get_user):
+          mock_get_user.return_value = User(id="user1", email="test@example.com", name="Test")
+          # ... rest of test
+
+  edge_cases_to_test:
+    - "Null/None inputs"
+    - "Empty collections ([], {}, '')"
+    - "Boundary values (min, max, zero)"
+    - "Invalid inputs (wrong types, out of range)"
+    - "Exceptions and error handling"
+
+###############################################################################
+# 3. INTEGRATION TESTING STRATEGY
+###############################################################################
+
+integration_testing:
+  definition: "Tests that verify multiple components working together"
+
+  characteristics:
+    - "Test real component interactions"
+    - "Use test database (in-memory SQLite)"
+    - "Use FastAPI TestClient for API tests"
+    - "Run in seconds"
+    - "Test realistic scenarios"
+
+  api_testing_approach:
+    tool: "FastAPI TestClient with httpx"
+    example: |
+      def test_permission_check_api(test_client, test_db):
+          # Create test data in test_db
+          # ...
+
+          # Make API call
+          response = test_client.get(
+              "/api/v1/permission-check",
+              params={"resourceId": "...", "userId": "...", "action": "can_edit"}
+          )
+
+          # Assert response
+          assert response.status_code == 200
+          assert response.json()["allowed"] is True
+
+  database_testing_approach:
+    database: "SQLite in-memory (:memory:)"
+    setup:
+      - "Create fresh database for each test"
+      - "Run migration scripts"
+      - "Insert test data"
+    teardown:
+      - "Close connection"
+      - "Clean up resources"
+
+    example: |
+      @pytest.fixture
+      def test_db():
+          db = DatabaseConnection(DatabaseConfig(db_type="sqlite", sqlite_path=":memory:"))
+          db.connect()
+
+          # Run migrations
+          with open("migrations/001_initial_schema.sql") as f:
+              db.get_connection().executescript(f.read())
+
+          yield db
+          db.close()
+
+  test_data_management:
+    approach: "Fixtures with sample data"
+    principles:
+      - "Keep test data minimal"
+      - "Use descriptive IDs (user1, team1, not random UUIDs)"
+      - "Document test data relationships"
+      - "Clean up after each test"
+
+###############################################################################
+# 4. SCENARIO TESTING STRATEGY
+###############################################################################
+
+scenario_testing:
+  definition: "End-to-end tests of complete user workflows from README.md"
+
+  approach: "Test all 7 permission scenarios"
+
+  scenario_test_structure:
+    pattern: "Given-When-Then (Gherkin-style)"
+    example: |
+      def test_scenario_1_creator_has_full_access():
+          """
+          Scenario 1: Document creator has full access
+
+          Given a user "user1" who created a document "doc1"
+          And a policy granting creator full permissions
+          When user1 tries to view, edit, delete, or share doc1
+          Then all actions should be allowed
+          """
+          # Given (setup)
+          user = create_test_user("user1")
+          document = create_test_document("doc1", creator_id="user1")
+          policy = create_creator_policy("doc1", "user1")
+
+          # When & Then (test each action)
+          assert check_permission("doc1", "user1", "can_view") is True
+          assert check_permission("doc1", "user1", "can_edit") is True
+          assert check_permission("doc1", "user1", "can_delete") is True
+          assert check_permission("doc1", "user1", "can_share") is True
+
+  scenario_coverage:
+    - "Scenario 1: Creator Access (happy path)"
+    - "Scenario 2: Team Admin Access (role-based)"
+    - "Scenario 3: Project Member Access (membership)"
+    - "Scenario 4: Public Link Access (special case)"
+    - "Scenario 5: Deleted Document (edge case)"
+    - "Scenario 6: Explicit Deny (precedence)"
+    - "Scenario 7: Default Deny (negative case)"
+
+###############################################################################
+# 5. TEST DATA STRATEGY
+###############################################################################
+
+test_data:
+  principles:
+    - "Use realistic but minimal data"
+    - "Make data relationships clear"
+    - "Use descriptive identifiers"
+    - "Avoid test data pollution"
+
+  sample_entities:
+    users:
+      - id: "user1"
+        email: "admin@example.com"
+        name: "Admin User"
+        role_in_team: "admin"
+
+      - id: "user2"
+        email: "editor@example.com"
+        name: "Editor User"
+        role_in_team: "editor"
+
+      - id: "user3"
+        email: "viewer@example.com"
+        name: "Viewer User"
+        role_in_team: "viewer"
+
+    teams:
+      - id: "team1"
+        name: "Pro Team"
+        plan: "pro"
+
+      - id: "team2"
+        name: "Free Team"
+        plan: "free"
+
+    projects:
+      - id: "proj1"
+        name: "Main Project"
+        teamId: "team1"
+        visibility: "private"
+
+      - id: "proj2"
+        name: "Public Project"
+        teamId: "team1"
+        visibility: "public"
+
+    documents:
+      - id: "doc1"
+        title: "Private Doc"
+        projectId: "proj1"
+        creatorId: "user1"
+        deletedAt: null
+        publicLinkEnabled: false
+
+      - id: "doc2"
+        title: "Public Link Doc"
+        projectId: "proj1"
+        creatorId: "user1"
+        deletedAt: null
+        publicLinkEnabled: true
+
+      - id: "doc3"
+        title: "Deleted Doc"
+        projectId: "proj1"
+        creatorId: "user2"
+        deletedAt: "2025-01-01T00:00:00Z"
+        publicLinkEnabled: false
+
+  fixture_organization:
+    location: "tests/fixtures/"
+    files:
+      - "sample_entities.py - User, Team, Project, Document instances"
+      - "sample_policies.py - Pre-built policy documents"
+      - "test_data.sql - SQL INSERT statements for database tests"
+
+###############################################################################
+# 6. ASSERTION STRATEGY
+###############################################################################
+
+assertions:
+  principles:
+    - "One logical assertion per test (prefer)"
+    - "Use descriptive assertion messages"
+    - "Assert expected behavior, not implementation details"
+
+  assertion_patterns:
+    boolean_checks:
+      good: "assert result is True"
+      avoid: "assert result == True"
+
+    equality_checks:
+      good: "assert user.id == 'user1'"
+      avoid: "assert 'user1' == user.id"  # Expected on right
+
+    collection_checks:
+      good: "assert len(policies) == 3"
+      also_good: "assert policies == [policy1, policy2, policy3]"
+
+    exception_checks:
+      good: |
+        with pytest.raises(ValueError, match="Invalid URN"):
+            extract_urn_components("invalid")
+
+    custom_messages:
+      good: |
+        assert result.allowed is True, f"Expected allow but got deny. Matched policies: {result.matched_policies}"
+
+###############################################################################
+# 7. ERROR HANDLING TESTING
+###############################################################################
+
+error_handling:
+  strategy: "Test both happy path and error paths"
+
+  error_scenarios_to_test:
+    - name: "Invalid Input"
+      examples:
+        - "Invalid URN format"
+        - "Invalid permission enum"
+        - "Invalid effect enum"
+        - "Null required fields"
+
+    - name: "Not Found"
+      examples:
+        - "User not found"
+        - "Document not found"
+        - "Policy not found"
+
+    - name: "Database Errors"
+      examples:
+        - "Connection failure"
+        - "Query timeout"
+        - "Constraint violation"
+
+    - name: "Business Logic Errors"
+      examples:
+        - "Access denied"
+        - "Document deleted"
+        - "Policy conflict"
+
+  testing_exceptions:
+    example: |
+      def test_evaluator_raises_on_invalid_urn():
+          with pytest.raises(ValueError, match="Invalid URN format"):
+              extract_urn_components("not-a-urn")
+
+  testing_api_errors:
+    example: |
+      def test_api_returns_404_for_missing_user(test_client):
+          response = test_client.get(
+              "/api/v1/permission-check",
+              params={"resourceId": "...", "userId": "nonexistent", "action": "can_view"}
+          )
+          assert response.status_code == 404
+          assert response.json()["error"] == "NOT_FOUND"
+
+###############################################################################
+# 8. PERFORMANCE TESTING STRATEGY
+###############################################################################
+
+performance_testing:
+  approach: "Measure critical operations"
+
+  targets:
+    - operation: "Filter evaluation"
+      target: "< 1ms per filter"
+      method: "Time in unit tests"
+
+    - operation: "Permission check (full evaluation)"
+      target: "< 200ms (p95)"
+      method: "Time in integration tests"
+
+    - operation: "Policy CRUD operations"
+      target: "< 100ms"
+      method: "Time in integration tests"
+
+  implementation:
+    example: |
+      import time
+
+      def test_permission_check_performance(test_client, test_db):
+          # Setup
+          # ...
+
+          # Measure
+          start = time.time()
+          response = test_client.get("/api/v1/permission-check", params=...)
+          elapsed_ms = (time.time() - start) * 1000
+
+          # Assert
+          assert response.status_code == 200
+          assert elapsed_ms < 200, f"Permission check took {elapsed_ms}ms (target: <200ms)"
+
+###############################################################################
+# 9. TEST COVERAGE STRATEGY
+###############################################################################
+
+coverage:
+  tool: "pytest-cov"
+
+  targets:
+    overall: "85%"
+    critical_components: "90%"
+
+  measurement:
+    command: "uv run pytest --cov=src --cov-report=html --cov-report=term tests/"
+    output: "htmlcov/index.html"
+
+  coverage_rules:
+    must_cover:
+      - "All business logic (filter engine, evaluator)"
+      - "All API endpoints"
+      - "All database operations"
+
+    can_skip:
+      - "__init__.py files"
+      - "Type stubs"
+      - "Deprecated code"
+      - "Generated code"
+
+  coverage_reporting:
+    - "HTML report for detailed analysis"
+    - "Terminal report for quick feedback"
+    - "Fail CI if coverage drops below 85%"
+
+###############################################################################
+# 10. TEST MAINTENANCE STRATEGY
+###############################################################################
+
+test_maintenance:
+  code_reviews:
+    - "All new features must include tests"
+    - "Test code quality reviewed same as production code"
+    - "Tests must be readable and maintainable"
+
+  refactoring:
+    when_to_refactor:
+      - "Test duplication (extract fixtures)"
+      - "Complex test setup (use factory functions)"
+      - "Hard to understand tests (simplify, add comments)"
+      - "Slow tests (optimize or split)"
+
+    refactoring_techniques:
+      - "Extract common setup to fixtures"
+      - "Use factory functions for test data"
+      - "Parametrize similar tests"
+      - "Split large test files"
+
+  test_quality_metrics:
+    - "Test execution time (should stay < 30s)"
+    - "Test flakiness rate (target: 0%)"
+    - "Test coverage (maintain > 85%)"
+    - "Test readability (peer reviewed)"
+
+###############################################################################
+# 11. BEST PRACTICES
+###############################################################################
+
+best_practices:
+  do:
+    - "Keep tests simple and focused"
+    - "Use descriptive test names"
+    - "Test one thing per test"
+    - "Use fixtures for common setup"
+    - "Clean up after tests"
+    - "Make tests deterministic"
+    - "Test edge cases"
+    - "Document complex test scenarios"
+
+  dont:
+    - "Don't test implementation details"
+    - "Don't share state between tests"
+    - "Don't use sleep() for timing"
+    - "Don't ignore flaky tests"
+    - "Don't skip writing tests for 'simple' code"
+    - "Don't make tests depend on test execution order"
+    - "Don't use production database for tests"
+
+###############################################################################
+# 12. CONTINUOUS IMPROVEMENT
+###############################################################################
+
+continuous_improvement:
+  review_schedule: "Every 2 weeks"
+
+  review_checklist:
+    - "Are tests still relevant?"
+    - "Can any tests be removed?"
+    - "Are there new edge cases to test?"
+    - "Is test execution time acceptable?"
+    - "Is coverage meeting targets?"
+    - "Are there flaky tests to fix?"
+
+  metrics_to_track:
+    - "Test count over time"
+    - "Test execution time trend"
+    - "Coverage trend"
+    - "Flaky test incidents"
+    - "Test failure rate in CI"
+
+###############################################################################
+# END OF TEST STRATEGY
+###############################################################################

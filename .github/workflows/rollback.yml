@@ -1,0 +1,168 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'Version to rollback to (e.g., v1.0.0 or prod-abc123)'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    name: Rollback to Previous Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: ${{ secrets.PROD_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate target version
+        run: |
+          echo "🔍 Validating target version: ${{ github.event.inputs.target_version }}"
+
+          # Check if image exists in registry
+          docker pull ${{ secrets.DOCKER_USERNAME }}/permission-control:${{ github.event.inputs.target_version }}
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Target version exists"
+          else
+            echo "❌ Target version not found in registry"
+            exit 1
+          fi
+
+      - name: Confirm rollback
+        run: |
+          echo "⚠️  ROLLBACK INITIATED"
+          echo "Target version: ${{ github.event.inputs.target_version }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "Initiated by: ${{ github.actor }}"
+
+      - name: Execute rollback
+        run: |
+          echo "🔄 Rolling back to ${{ github.event.inputs.target_version }}..."
+
+          # Placeholder for actual rollback logic
+          # Implement based on your infrastructure:
+
+          # Option 1: Docker Compose
+          # ssh $PROD_HOST << 'EOF'
+          # cd /opt/permission-control
+          # docker-compose stop permission-control
+          # docker-compose rm -f permission-control
+          # docker pull $DOCKER_IMAGE:$TARGET_VERSION
+          # docker-compose up -d permission-control
+          # EOF
+
+          # Option 2: Kubernetes
+          # kubectl set image deployment/permission-control \
+          #   permission-control=$DOCKER_IMAGE:$TARGET_VERSION
+
+          # Option 3: Cloud provider CLI
+          # aws ecs update-service --cluster prod --service permission-control \
+          #   --force-new-deployment --task-definition permission-control:$TARGET_VERSION
+
+          echo "✅ Rollback executed (placeholder)"
+
+      - name: Health check after rollback
+        run: |
+          echo "🏥 Performing health checks..."
+          sleep 10
+
+          for i in {1..10}; do
+            if curl -f ${{ secrets.PROD_URL }}/api/v1/health; then
+              echo "✅ Health check passed after rollback"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          echo "❌ Health check failed after rollback"
+          exit 1
+
+      - name: Verify rollback
+        run: |
+          echo "🔍 Verifying rollback..."
+          # Add verification tests here
+          curl -f ${{ secrets.PROD_URL }}/api/v1/health || exit 1
+          echo "✅ Rollback verified"
+
+      - name: Create incident issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Production Rollback: ${{ github.event.inputs.target_version }}`,
+              body: `## Rollback Details
+
+              **Target Version:** ${{ github.event.inputs.target_version }}
+              **Reason:** ${{ github.event.inputs.reason }}
+              **Initiated by:** ${{ github.actor }}
+              **Time:** ${{ github.event.created_at }}
+
+              ## Next Steps
+
+              - [ ] Investigate root cause
+              - [ ] Fix issues in development
+              - [ ] Test fix in staging
+              - [ ] Plan re-deployment
+              - [ ] Post-mortem document
+
+              ## Related
+
+              - Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              `,
+              labels: ['incident', 'production', 'rollback']
+            });
+            console.log('Created incident issue:', issue.data.html_url);
+
+      - name: Notify rollback success
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: 'incoming-webhook'
+          payload: |
+            {
+              "text": "🔄 Production rollback successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production Rollback Completed*\n*Target Version:* ${{ github.event.inputs.target_version }}\n*Reason:* ${{ github.event.inputs.reason }}\n*Initiated by:* ${{ github.actor }}\n*Status:* ✅ Successful\n\n⚠️ Incident issue created - investigate and fix"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify rollback failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: 'incoming-webhook'
+          payload: |
+            {
+              "text": "❌ Production rollback failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production Rollback Failed*\n*Target Version:* ${{ github.event.inputs.target_version }}\n*Reason:* ${{ github.event.inputs.reason }}\n*Initiated by:* ${{ github.actor }}\n*Status:* ❌ Failed\n\n🚨 URGENT: Manual intervention required!"
+                  }
+                }
+              ]
+            }

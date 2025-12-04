@@ -1,0 +1,447 @@
+###############################################################################
+# System Architecture Specification (Simplified)
+# Project: Permission DSL Challenge
+# Service: Permission Control System
+# Version: 1.0.0 (Simplified to match DESIGN.md)
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  description: "Simple policy-based permission control system following DESIGN.md"
+  principle: "Start simple, scale as needed"
+
+###############################################################################
+# 1. SYSTEM OVERVIEW (from DESIGN.md)
+###############################################################################
+
+system_overview:
+  architecture_style: "Simple monolithic application"
+  description: "Single Python FastAPI service with three core components"
+
+  core_components:
+    - name: "Interface"
+      description: "HTTP server providing REST API endpoints"
+      responsibility: "Handle API requests, route to appropriate components"
+
+    - name: "Builder"
+      description: "Policy document builder"
+      responsibility: "Build and validate policy documents from user input"
+
+    - name: "Evaluator"
+      description: "Permission evaluator"
+      responsibility: "Evaluate permissions based on policies and filters"
+
+    - name: "Database"
+      description: "Data storage layer"
+      responsibility: "Store policies, resources, and entities"
+
+  data_flow: |
+    User Request → Interface → Builder/Evaluator → Database
+                           ↓
+                      Response
+
+###############################################################################
+# 2. ENVIRONMENT CONFIGURATION
+###############################################################################
+
+environments:
+  local:
+    description: "Local development on developer machine"
+    deployment: "Run directly with Python"
+    database: "SQLite file (./data/permissions.db)"
+    command: "uv run python -m uvicorn src.main:app --reload --port 8000"
+    requirements:
+      - "Python 3.13+"
+      - "4GB RAM"
+      - "uv package manager"
+
+  production:
+    description: "Production deployment"
+    deployment: "Docker container or simple server"
+    database: "PostgreSQL (single instance)"
+    options:
+      simple: "Single VPS/EC2 instance with Docker"
+      managed: "Heroku, Railway, Render, or similar PaaS"
+    database_options:
+      - "Managed PostgreSQL (RDS, Supabase, Neon)"
+      - "PostgreSQL in Docker container"
+
+###############################################################################
+# 3. COMPONENT ARCHITECTURE (from DESIGN.md)
+###############################################################################
+
+components:
+  interface:
+    location: "src/api/"
+    technology: "FastAPI"
+    responsibility: "REST API endpoints"
+
+    endpoints:
+      - path: "GET /resource/policy"
+        description: "Fetch policy document by resourceId"
+        parameters:
+          - name: "resourceId"
+            type: "query"
+            required: true
+        responses:
+          200: "Policy document"
+          404: "Policy not found"
+
+      - path: "POST /resource/policy"
+        description: "Apply/Update permission policy"
+        body: "Policy document OR {resourceId, action, target}"
+        responses:
+          201: "Policy created/updated"
+          400: "Invalid policy"
+
+      - path: "GET /permission-check"
+        description: "Evaluate permission"
+        parameters:
+          - name: "resourceId"
+            type: "query"
+            required: true
+          - name: "userId"
+            type: "query"
+            required: true
+          - name: "action"
+            type: "query"
+            required: true
+        responses:
+          200: "Allow"
+          401: "Deny"
+          404: "Resource/user not found"
+
+  builder:
+    location: "src/components/builder.py"
+    responsibility: "Build policy documents"
+    functions:
+      - name: "build_policy_document"
+        input: "resourceId, action, target"
+        output: "ResourcePolicyDocument"
+        process:
+          - "Get resource from database"
+          - "Generate policy structure"
+          - "Validate policy"
+          - "Return policy document"
+
+  evaluator:
+    location: "src/components/evaluator.py"
+    responsibility: "Evaluate permissions"
+
+    evaluation_process:
+      step_1: "Extract team/project from URNs"
+      step_2: "Check user action (can_view, can_edit, can_delete, can_share)"
+      step_3: "Check resource properties (publicEnabled, deletedAt)"
+      step_4: "Extract matching policies (user.team == resource.team)"
+      step_5: "Compare allowed actions (DENY first, then ALLOW, default DENY)"
+
+    functions:
+      - name: "evaluate_permission"
+        input: "user, resource, action, policies"
+        output: "boolean (allow/deny)"
+
+      - name: "evaluate_filter"
+        input: "filter, context_data"
+        output: "boolean"
+        operators: ["==", "!=", ">", ">=", "<", "<=", "<>", "in", "not in", "has", "has not"]
+
+  database:
+    location: "src/database/"
+    technology:
+      local: "SQLite"
+      production: "PostgreSQL"
+    orm: "SQLAlchemy (optional) or raw SQL"
+
+###############################################################################
+# 4. DATABASE DESIGN (Simplified)
+###############################################################################
+
+database:
+  type: "Relational (SQLite/PostgreSQL)"
+
+  tables:
+    users:
+      fields:
+        - "id VARCHAR PRIMARY KEY"
+        - "email VARCHAR UNIQUE"
+        - "name VARCHAR"
+
+    teams:
+      fields:
+        - "id VARCHAR PRIMARY KEY"
+        - "name VARCHAR"
+        - "plan VARCHAR (free, pro, enterprise)"
+
+    projects:
+      fields:
+        - "id VARCHAR PRIMARY KEY"
+        - "team_id VARCHAR REFERENCES teams(id)"
+        - "name VARCHAR"
+        - "visibility VARCHAR (private, public)"
+
+    documents:
+      fields:
+        - "id VARCHAR PRIMARY KEY"
+        - "project_id VARCHAR REFERENCES projects(id)"
+        - "title VARCHAR"
+        - "creator_id VARCHAR REFERENCES users(id)"
+        - "deleted_at TIMESTAMP NULL"
+        - "public_link_enabled BOOLEAN DEFAULT FALSE"
+
+    team_memberships:
+      fields:
+        - "user_id VARCHAR REFERENCES users(id)"
+        - "team_id VARCHAR REFERENCES teams(id)"
+        - "role VARCHAR (viewer, editor, admin)"
+      constraints:
+        - "PRIMARY KEY (user_id, team_id)"
+
+    project_memberships:
+      fields:
+        - "user_id VARCHAR REFERENCES users(id)"
+        - "project_id VARCHAR REFERENCES projects(id)"
+        - "role VARCHAR (viewer, editor, admin)"
+      constraints:
+        - "PRIMARY KEY (user_id, project_id)"
+
+    resource_policies:
+      fields:
+        - "id SERIAL PRIMARY KEY"
+        - "resource_id VARCHAR UNIQUE"
+        - "policy_document JSONB/TEXT"
+
+    user_policies:
+      fields:
+        - "id SERIAL PRIMARY KEY"
+        - "user_id VARCHAR UNIQUE REFERENCES users(id)"
+        - "policy_document JSONB/TEXT"
+
+  setup:
+    migrations: "Simple SQL scripts in migrations/ folder"
+    initialization: "CREATE TABLE IF NOT EXISTS statements"
+
+###############################################################################
+# 5. DEPLOYMENT OPTIONS
+###############################################################################
+
+deployment:
+  option_1_simple_docker:
+    description: "Run as Docker container"
+    steps:
+      - "Build: docker build -t permissions-api ."
+      - "Run: docker run -p 8000:8000 permissions-api"
+    database: "PostgreSQL in separate container or managed service"
+
+  option_2_bare_metal:
+    description: "Run directly on server"
+    steps:
+      - "Install Python 3.13+"
+      - "Install dependencies: uv sync"
+      - "Run: uv run uvicorn src.main:app --host 0.0.0.0 --port 8000"
+    database: "PostgreSQL installed on same server"
+
+  option_3_paas:
+    description: "Deploy to Platform as a Service"
+    providers:
+      - "Heroku (with Heroku Postgres)"
+      - "Railway.app"
+      - "Render"
+      - "Fly.io"
+    advantage: "Automatic scaling, database included"
+
+###############################################################################
+# 6. MONITORING (Basic)
+###############################################################################
+
+monitoring:
+  basic:
+    logging:
+      level: "INFO in production, DEBUG in local"
+      format: "Timestamp, level, message"
+      output: "Console (captured by Docker/PaaS logs)"
+
+    health_check:
+      endpoint: "GET /health"
+      response: "{status: 'healthy', database: 'connected'}"
+
+    metrics:
+      basic: "Request count, response time (logged)"
+      optional: "Prometheus /metrics endpoint (if needed later)"
+
+  production_optional:
+    - "Use PaaS built-in monitoring (Heroku metrics, Railway dashboard)"
+    - "Add Sentry for error tracking"
+    - "Use cloud provider monitoring (AWS CloudWatch, GCP Monitoring)"
+
+###############################################################################
+# 7. SECURITY (Essential Only)
+###############################################################################
+
+security:
+  authentication:
+    method: "Bearer token (JWT) in Authorization header"
+    note: "Authentication implementation is outside scope of this challenge"
+
+  database:
+    local: "SQLite file (no password needed)"
+    production: "PostgreSQL with password in environment variable"
+
+  secrets:
+    method: "Environment variables"
+    variables:
+      - "DATABASE_URL"
+      - "JWT_SECRET (if implementing auth)"
+    storage: ".env file (local), Platform secrets (production)"
+
+  input_validation:
+    method: "Pydantic models validate all inputs"
+    sql_injection: "Use parameterized queries"
+
+###############################################################################
+# 8. TESTING
+###############################################################################
+
+testing:
+  unit_tests:
+    framework: "pytest"
+    location: "tests/unit/"
+    run: "uv run pytest tests/unit/"
+
+  integration_tests:
+    framework: "pytest with test database"
+    location: "tests/integration/"
+    database: "SQLite in-memory"
+    run: "uv run pytest tests/integration/"
+
+  coverage:
+    target: "> 80%"
+    command: "uv run pytest --cov=src tests/"
+
+###############################################################################
+# 9. PROJECT STRUCTURE
+###############################################################################
+
+directory_structure: |
+  permissions-dsl-challenge/
+  ├── src/
+  │   ├── __init__.py
+  │   ├── main.py                 # FastAPI app entry point
+  │   ├── models/                 # Pydantic models
+  │   │   ├── __init__.py
+  │   │   ├── common.py           # Permission, Effect, Filter
+  │   │   ├── entities.py         # User, Team, Project, Document
+  │   │   └── policies.py         # Policy models
+  │   ├── components/             # Core logic
+  │   │   ├── __init__.py
+  │   │   ├── builder.py          # Policy builder
+  │   │   ├── evaluator.py        # Permission evaluator
+  │   │   └── filter_engine.py    # Filter evaluation
+  │   ├── api/                    # HTTP endpoints
+  │   │   ├── __init__.py
+  │   │   └── routes.py           # FastAPI routes
+  │   └── database/               # Data access
+  │       ├── __init__.py
+  │       ├── connection.py       # DB connection
+  │       └── repository.py       # Data queries
+  ├── tests/
+  │   ├── unit/
+  │   └── integration/
+  ├── migrations/                 # SQL migration scripts
+  │   ├── 001_initial_schema.sql
+  │   └── 002_add_policies.sql
+  ├── data/                       # Local SQLite database
+  │   └── permissions.db
+  ├── schema/                     # JSON schemas
+  │   ├── user_policy.json
+  │   └── resource_policy.json
+  ├── Dockerfile                  # Simple Docker build
+  ├── docker-compose.yml          # Local dev environment
+  ├── pyproject.toml             # Python dependencies
+  ├── .env.example               # Environment variables template
+  ├── DESIGN.md                  # Your design doc
+  └── README.md
+
+###############################################################################
+# 10. GETTING STARTED
+###############################################################################
+
+quickstart:
+  local_development:
+    steps:
+      - "Install Python 3.13+"
+      - "Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
+      - "Clone repo and cd into directory"
+      - "Install dependencies: uv sync"
+      - "Initialize database: uv run python -m src.database.init_db"
+      - "Run server: uv run uvicorn src.main:app --reload --port 8000"
+      - "Open browser: http://localhost:8000/health"
+      - "View docs: http://localhost:8000/docs"
+
+  docker_development:
+    steps:
+      - "Build: docker-compose up --build"
+      - "Access: http://localhost:8000"
+
+  production_deployment:
+    heroku_example:
+      - "heroku create my-permissions-api"
+      - "heroku addons:create heroku-postgresql:mini"
+      - "git push heroku main"
+      - "heroku run python -m src.database.migrate"
+
+###############################################################################
+# 11. SCALING PATH (Future)
+###############################################################################
+
+future_scaling:
+  phase_1_current:
+    description: "Simple single instance"
+    capacity: "Handles 10-100 requests/second"
+    cost: "~$10-50/month"
+
+  phase_2_horizontal:
+    description: "Multiple instances + load balancer"
+    when: "> 100 requests/second"
+    changes:
+      - "Add load balancer"
+      - "Run 2-3 instances"
+      - "Add Redis for policy caching"
+    cost: "~$100-200/month"
+
+  phase_3_advanced:
+    description: "Full enterprise setup"
+    when: "> 1000 requests/second"
+    changes:
+      - "Move to Kubernetes"
+      - "Add read replicas"
+      - "Add monitoring stack"
+      - "Multi-region deployment"
+    cost: "~$500-1000+/month"
+
+###############################################################################
+# 12. NON-FUNCTIONAL REQUIREMENTS (Realistic)
+###############################################################################
+
+non_functional:
+  performance:
+    target: "p95 latency < 200ms for permission checks"
+    optimization: "Add Redis caching when needed"
+
+  availability:
+    target: "99% uptime (acceptable for MVP)"
+    improvement: "99.9% with load balancer and multiple instances"
+
+  scalability:
+    initial: "Single instance handles 10-100 req/s"
+    horizontal: "Add more instances as needed"
+
+  maintainability:
+    code_style: "Black formatting, mypy type checking"
+    documentation: "API docs auto-generated by FastAPI"
+    tests: "80%+ coverage"
+
+###############################################################################
+# END OF SIMPLIFIED ARCHITECTURE
+###############################################################################

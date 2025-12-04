@@ -1,0 +1,633 @@
+###############################################################################
+# Local Development Setup Guide
+# Project: Permission DSL Challenge
+# Version: 1.0.0
+# Created: Stage 5 - Delivery Pipeline
+# Role: DevOps Engineer (Build & Delivery)
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "DevOps Engineer (Build & Delivery)"
+  created_date: "2025-12-04"
+  purpose: "Complete guide for setting up local development environment"
+
+###############################################################################
+# 1. PREREQUISITES
+###############################################################################
+
+prerequisites:
+  required:
+    python:
+      version: "3.13 or higher"
+      check_command: "python3 --version"
+      install:
+        macos: "brew install python@3.13"
+        ubuntu: "sudo apt install python3.13 python3.13-venv"
+        windows: "Download from python.org"
+
+    uv_package_manager:
+      description: "Fast Python package manager and project manager"
+      install_command: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+      verify: "uv --version"
+      why: "Faster than pip, simpler than poetry, handles virtual environments"
+
+    git:
+      version: "2.x"
+      check: "git --version"
+      install:
+        macos: "brew install git"
+        ubuntu: "sudo apt install git"
+        windows: "Download from git-scm.com"
+
+  recommended:
+    vscode:
+      description: "Recommended IDE with Python extension"
+      extensions:
+        - "ms-python.python (Python)"
+        - "ms-python.vscode-pylance (Pylance)"
+        - "charliermarsh.ruff (Ruff linter)"
+        - "ms-python.black-formatter (Black formatter)"
+        - "tamasfe.even-better-toml (TOML support)"
+
+    docker:
+      description: "For container testing (optional)"
+      version: "20.x or higher"
+      install: "https://docs.docker.com/get-docker/"
+
+  optional:
+    postgresql_client:
+      description: "For connecting to PostgreSQL databases"
+      install:
+        macos: "brew install postgresql@15"
+        ubuntu: "sudo apt install postgresql-client"
+
+    httpie_or_curl:
+      description: "For testing API endpoints"
+      install_httpie: "brew install httpie"
+      usage: "http GET http://localhost:8000/api/v1/health"
+
+###############################################################################
+# 2. INITIAL SETUP
+###############################################################################
+
+initial_setup:
+  step_1_clone_repository:
+    description: "Clone the project repository"
+    commands:
+      - "git clone https://github.com/{org}/permissions-dsl-challenge.git"
+      - "cd permissions-dsl-challenge"
+
+  step_2_install_uv:
+    description: "Install uv package manager"
+    commands:
+      - "curl -LsSf https://astral.sh/uv/install.sh | sh"
+      - "# Restart terminal or source ~/.bashrc"
+      - "uv --version"
+
+  step_3_create_virtual_environment:
+    description: "uv automatically creates and manages virtual environment"
+    commands:
+      - "# uv sync will create .venv/ automatically"
+      - "uv sync"
+
+    what_happens:
+      - "Creates .venv/ directory"
+      - "Installs Python 3.13 if needed"
+      - "Installs all dependencies from pyproject.toml"
+      - "Creates uv.lock for reproducible installs"
+
+  step_4_setup_database:
+    description: "Initialize local SQLite database"
+    commands:
+      - "mkdir -p data"
+      - "# Database will be created automatically on first run"
+
+  step_5_run_migrations:
+    description: "Apply database schema"
+    commands:
+      - "uv run python -c \"from src.database.connection import DatabaseConnection, DatabaseConfig; config = DatabaseConfig(db_type='sqlite', sqlite_path='data/permissions.db'); db = DatabaseConnection(config); db.connect(); exec(open('migrations/001_initial_schema.sql').read()); exec(open('migrations/002_add_indexes.sql').read()); db.commit(); db.close()\""
+
+    or_run_application:
+      note: "Migrations can also run automatically on application startup"
+
+  step_6_verify_setup:
+    description: "Verify installation is working"
+    commands:
+      - "uv run python -c 'import src; print(\"Setup successful!\")'"
+      - "uv run pytest tests/unit/test_filter_engine.py -v"
+
+###############################################################################
+# 3. DIRECTORY STRUCTURE
+###############################################################################
+
+directory_structure:
+  overview: |
+    permissions-dsl-challenge/
+    ├── .github/              # GitHub Actions workflows
+    ├── .venv/                # Virtual environment (auto-created by uv)
+    ├── data/                 # Local database files (gitignored)
+    ├── docs/                 # Documentation and specs
+    ├── migrations/           # Database migration scripts
+    ├── schema/               # JSON schemas
+    ├── src/                  # Application source code
+    │   ├── api/              # HTTP routes
+    │   ├── components/       # Core logic (Builder, Evaluator)
+    │   ├── database/         # Database layer
+    │   ├── models/           # Pydantic models
+    │   └── main.py           # FastAPI entry point
+    ├── tests/                # Test files
+    │   ├── unit/             # Unit tests
+    │   ├── integration/      # Integration tests
+    │   └── conftest.py       # Shared fixtures
+    ├── .coveragerc           # Coverage configuration
+    ├── .gitignore            # Git ignore rules
+    ├── pyproject.toml        # Project configuration
+    ├── pytest.ini            # Pytest configuration
+    ├── README.md             # Project README
+    └── uv.lock               # Locked dependencies
+
+  important_files:
+    pyproject_toml:
+      description: "Project configuration, dependencies, tool settings"
+      sections:
+        - "[project]: Project metadata and dependencies"
+        - "[tool.uv]: uv-specific configuration"
+        - "[tool.black]: Code formatter settings"
+        - "[tool.ruff]: Linter settings"
+        - "[tool.mypy]: Type checker settings"
+
+    uv_lock:
+      description: "Locked dependency versions for reproducibility"
+      note: "Commit this file to ensure consistent environments"
+
+    env_file:
+      name: ".env (not committed)"
+      description: "Local environment variables"
+      template: |
+        DB_TYPE=sqlite
+        SQLITE_PATH=./data/permissions.db
+        LOG_LEVEL=debug
+
+###############################################################################
+# 4. DAILY DEVELOPMENT WORKFLOW
+###############################################################################
+
+daily_workflow:
+  starting_work:
+    description: "Steps to start working on a feature"
+    commands:
+      - "# Pull latest changes"
+      - "git checkout main"
+      - "git pull origin main"
+      - ""
+      - "# Create feature branch"
+      - "git checkout -b feature/my-feature"
+      - ""
+      - "# Update dependencies (if needed)"
+      - "uv sync"
+      - ""
+      - "# Start development server"
+      - "uv run python -m uvicorn src.main:app --reload --port 8000"
+
+  running_the_application:
+    development_server:
+      description: "Run with hot reload for development"
+      command: "uv run python -m uvicorn src.main:app --reload --port 8000"
+      hot_reload: "Enabled - code changes restart server automatically"
+      access: "http://localhost:8000"
+
+    api_documentation:
+      swagger_ui: "http://localhost:8000/docs"
+      redoc: "http://localhost:8000/redoc"
+      openapi_json: "http://localhost:8000/openapi.json"
+
+    health_check:
+      endpoint: "GET http://localhost:8000/api/v1/health"
+      command: "curl http://localhost:8000/api/v1/health"
+
+  running_tests:
+    all_tests:
+      command: "uv run pytest tests/ -v"
+      duration: "~1 second"
+
+    unit_tests_only:
+      command: "uv run pytest tests/unit/ -v"
+      duration: "~0.5 seconds"
+
+    integration_tests_only:
+      command: "uv run pytest tests/integration/ -v"
+      duration: "~0.5 seconds"
+
+    specific_test_file:
+      command: "uv run pytest tests/unit/test_filter_engine.py -v"
+
+    specific_test_function:
+      command: "uv run pytest tests/unit/test_filter_engine.py::TestFilterOperators::test_operator_eq_matching_values -v"
+
+    with_coverage:
+      command: "uv run pytest --cov=src --cov-report=html --cov-report=term tests/"
+      html_report: "open htmlcov/index.html"
+
+    watch_mode:
+      description: "Auto-run tests on file changes"
+      command: "uv run pytest-watch"
+      install_if_needed: "uv pip install pytest-watch"
+
+  code_quality_checks:
+    format_code:
+      description: "Auto-format code with Black"
+      command: "uv run black src/ tests/"
+
+    check_formatting:
+      description: "Check if code is formatted (CI check)"
+      command: "uv run black --check src/ tests/"
+
+    sort_imports:
+      description: "Sort imports with isort"
+      command: "uv run isort src/ tests/"
+
+    lint_code:
+      description: "Lint code with Ruff"
+      command: "uv run ruff check src/ tests/"
+      auto_fix: "uv run ruff check --fix src/ tests/"
+
+    type_check:
+      description: "Static type checking with mypy"
+      command: "uv run mypy src/"
+
+    run_all_checks:
+      description: "Run all quality checks (what CI runs)"
+      script: |
+        #!/bin/bash
+        echo "Running code quality checks..."
+        uv run black --check src/ tests/ && \
+        uv run isort --check-only src/ tests/ && \
+        uv run ruff check src/ tests/ && \
+        uv run mypy src/ && \
+        uv run pytest tests/ -v
+        echo "All checks passed!"
+
+  making_changes:
+    edit_code:
+      editor: "VS Code, PyCharm, or your preferred editor"
+      auto_save: "Enable auto-save for instant feedback with hot reload"
+
+    run_tests:
+      description: "Run relevant tests after changes"
+      commands:
+        - "# Run tests for changed component"
+        - "uv run pytest tests/unit/test_builder.py -v"
+
+    commit_changes:
+      description: "Commit with conventional commit message"
+      commands:
+        - "git add src/components/builder.py tests/unit/test_builder.py"
+        - "git commit -m \"feat(builder): add policy merge functionality\""
+
+  ending_work:
+    description: "Steps when done for the day"
+    commands:
+      - "# Run all tests"
+      - "uv run pytest tests/ -v"
+      - ""
+      - "# Push changes"
+      - "git push origin feature/my-feature"
+      - ""
+      - "# Open pull request (if feature complete)"
+      - "gh pr create --title \"Add policy merge functionality\" --body \"...\""
+
+###############################################################################
+# 5. COMMON TASKS
+###############################################################################
+
+common_tasks:
+  add_new_dependency:
+    description: "Add a new Python package"
+    commands:
+      - "uv add <package-name>"
+      - "# Example: uv add httpx"
+      - "# This updates pyproject.toml and uv.lock"
+
+  add_dev_dependency:
+    description: "Add development-only dependency"
+    commands:
+      - "uv add --dev <package-name>"
+      - "# Example: uv add --dev pytest-watch"
+
+  update_dependencies:
+    description: "Update all dependencies to latest compatible versions"
+    commands:
+      - "uv lock --upgrade"
+      - "uv sync"
+
+  create_database_migration:
+    description: "Create a new database migration"
+    steps:
+      - "Create new file: migrations/00X_description.sql"
+      - "Write SQL DDL statements"
+      - "Test migration locally"
+      - "Commit migration file"
+
+  reset_database:
+    description: "Drop and recreate database"
+    commands:
+      - "rm data/permissions.db"
+      - "# Restart application - database will be recreated"
+
+  test_api_endpoint:
+    description: "Manually test an API endpoint"
+    curl_examples:
+      health_check:
+        command: "curl http://localhost:8000/api/v1/health"
+
+      create_policy:
+        command: |
+          curl -X POST http://localhost:8000/api/v1/resource/policy \
+            -H "Content-Type: application/json" \
+            -d '{
+              "resourceId": "urn:resource:team1:proj1:doc1",
+              "action": "can_edit",
+              "target": "user123"
+            }'
+
+      check_permission:
+        command: |
+          curl "http://localhost:8000/api/v1/permission-check?resourceId=urn:resource:team1:proj1:doc1&userId=user1&action=can_view"
+
+    httpie_examples:
+      create_policy:
+        command: |
+          http POST http://localhost:8000/api/v1/resource/policy \
+            resourceId=urn:resource:team1:proj1:doc1 \
+            action=can_edit \
+            target=user123
+
+  debug_application:
+    vscode_debugger:
+      description: "Debug with VS Code"
+      launch_json:
+        file: ".vscode/launch.json"
+        configuration: |
+          {
+            "version": "0.2.0",
+            "configurations": [
+              {
+                "name": "Python: FastAPI",
+                "type": "python",
+                "request": "launch",
+                "module": "uvicorn",
+                "args": [
+                  "src.main:app",
+                  "--reload",
+                  "--port",
+                  "8000"
+                ],
+                "jinja": true
+              }
+            ]
+          }
+
+    pdb_debugger:
+      description: "Use Python debugger"
+      usage: |
+        # Add breakpoint in code
+        import pdb; pdb.set_trace()
+
+        # Run application
+        # When breakpoint hits, use pdb commands:
+        # n - next line
+        # s - step into
+        # c - continue
+        # p variable - print variable
+        # l - list code
+        # q - quit
+
+###############################################################################
+# 6. TROUBLESHOOTING
+###############################################################################
+
+troubleshooting:
+  uv_command_not_found:
+    issue: "uv: command not found"
+    solutions:
+      - "Ensure uv is installed: curl -LsSf https://astral.sh/uv/install.sh | sh"
+      - "Restart terminal or run: source ~/.bashrc"
+      - "Check PATH includes ~/.cargo/bin"
+
+  import_errors:
+    issue: "ModuleNotFoundError or ImportError"
+    solutions:
+      - "Run: uv sync"
+      - "Ensure you're using uv run: uv run python -m uvicorn ..."
+      - "Check pyproject.toml has correct dependencies"
+
+  tests_failing:
+    issue: "Tests that worked before now fail"
+    solutions:
+      - "Pull latest changes: git pull origin main"
+      - "Update dependencies: uv sync"
+      - "Reset database: rm data/permissions.db"
+      - "Clear pytest cache: rm -rf .pytest_cache"
+      - "Check for local configuration issues"
+
+  port_already_in_use:
+    issue: "Port 8000 already in use"
+    solutions:
+      - "Find process: lsof -i :8000"
+      - "Kill process: kill -9 <PID>"
+      - "Or use different port: uvicorn src.main:app --port 8001"
+
+  database_locked:
+    issue: "database is locked"
+    solutions:
+      - "Close all connections to database"
+      - "Restart application"
+      - "Check for long-running transactions"
+
+  slow_tests:
+    issue: "Tests running slowly"
+    solutions:
+      - "Run only changed tests"
+      - "Use pytest-xdist for parallel execution: uv run pytest -n auto"
+      - "Check for network calls in tests (should be mocked)"
+
+###############################################################################
+# 7. TIPS & BEST PRACTICES
+###############################################################################
+
+tips_and_best_practices:
+  development:
+    - "Keep feature branches short-lived (1-3 days max)"
+    - "Run tests before committing"
+    - "Use meaningful commit messages"
+    - "Commit small, logical units"
+    - "Pull from main frequently"
+
+  testing:
+    - "Write tests as you code (TDD)"
+    - "Test edge cases"
+    - "Keep tests fast and independent"
+    - "Use fixtures for common test data"
+    - "Mock external dependencies"
+
+  code_quality:
+    - "Format code before committing (use auto-formatters)"
+    - "Run linters and type checkers"
+    - "Write docstrings for public functions"
+    - "Keep functions small and focused"
+    - "Follow existing code patterns"
+
+  debugging:
+    - "Use debugger instead of print statements"
+    - "Read error messages carefully"
+    - "Check logs for context"
+    - "Isolate the problem (minimal reproduction)"
+    - "Search error messages online"
+
+  productivity:
+    - "Use IDE shortcuts (learn them gradually)"
+    - "Set up auto-formatters on save"
+    - "Use pytest watch mode for TDD"
+    - "Keep terminal and browser open side-by-side"
+    - "Use httpie or Postman for API testing"
+
+###############################################################################
+# 8. USEFUL COMMANDS REFERENCE
+###############################################################################
+
+command_reference:
+  uv_commands:
+    - "uv sync                    # Install dependencies"
+    - "uv add <package>           # Add dependency"
+    - "uv add --dev <package>     # Add dev dependency"
+    - "uv remove <package>        # Remove dependency"
+    - "uv lock --upgrade          # Update lock file"
+    - "uv run <command>           # Run command in venv"
+    - "uv pip list                # List installed packages"
+
+  python_commands:
+    - "uv run python -m uvicorn src.main:app --reload    # Run dev server"
+    - "uv run python -c 'import src; print(src.__version__)'  # Check version"
+    - "uv run python -m pdb script.py                    # Debug script"
+
+  pytest_commands:
+    - "uv run pytest tests/ -v                           # Run all tests verbose"
+    - "uv run pytest tests/unit/ -v                      # Run unit tests"
+    - "uv run pytest -k test_filter -v                   # Run tests matching name"
+    - "uv run pytest --lf                                # Run last failed"
+    - "uv run pytest --cov=src --cov-report=html         # Coverage report"
+    - "uv run pytest -x                                  # Stop on first failure"
+    - "uv run pytest --pdb                               # Debug on failure"
+
+  git_commands:
+    - "git status                           # Check status"
+    - "git add .                            # Stage all changes"
+    - "git commit -m 'feat: add feature'    # Commit with message"
+    - "git push origin feature/my-feature   # Push branch"
+    - "git pull origin main                 # Pull main branch"
+    - "git checkout -b feature/new-feature  # Create new branch"
+
+  docker_commands:
+    - "docker build -t permission-control .         # Build image"
+    - "docker run -p 8000:8000 permission-control   # Run container"
+    - "docker ps                                    # List running containers"
+    - "docker logs <container-id>                   # View logs"
+    - "docker exec -it <container-id> bash          # Enter container"
+
+###############################################################################
+# 9. QUICK START SCRIPT
+###############################################################################
+
+quick_start_script:
+  description: "Copy-paste setup for new developers"
+  script: |
+    #!/bin/bash
+    # Quick setup script for Permission DSL Challenge
+
+    echo "🚀 Setting up Permission DSL Challenge..."
+
+    # Install uv if not already installed
+    if ! command -v uv &> /dev/null; then
+        echo "📦 Installing uv..."
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        source ~/.bashrc
+    fi
+
+    # Clone repository (if not already cloned)
+    if [ ! -d "permissions-dsl-challenge" ]; then
+        echo "📥 Cloning repository..."
+        git clone https://github.com/{org}/permissions-dsl-challenge.git
+        cd permissions-dsl-challenge
+    else
+        cd permissions-dsl-challenge
+        git pull origin main
+    fi
+
+    # Install dependencies
+    echo "📚 Installing dependencies..."
+    uv sync
+
+    # Setup database directory
+    mkdir -p data
+
+    # Run tests to verify setup
+    echo "🧪 Running tests..."
+    uv run pytest tests/unit/ -v
+
+    echo "✅ Setup complete!"
+    echo ""
+    echo "To start the development server:"
+    echo "  uv run python -m uvicorn src.main:app --reload --port 8000"
+    echo ""
+    echo "API Documentation:"
+    echo "  http://localhost:8000/docs"
+
+###############################################################################
+# 10. ONBOARDING CHECKLIST
+###############################################################################
+
+onboarding_checklist:
+  description: "Checklist for new team members"
+
+  setup:
+    - "[ ] Install Python 3.13+"
+    - "[ ] Install uv package manager"
+    - "[ ] Install Git"
+    - "[ ] Install VS Code (recommended)"
+    - "[ ] Clone repository"
+    - "[ ] Run uv sync"
+    - "[ ] Run tests successfully"
+    - "[ ] Start development server"
+    - "[ ] Access API docs at /docs"
+
+  understanding:
+    - "[ ] Read README.md"
+    - "[ ] Read DESIGN.md"
+    - "[ ] Review project structure"
+    - "[ ] Understand core components (Builder, Evaluator)"
+    - "[ ] Review API endpoints"
+    - "[ ] Understand policy evaluation logic"
+
+  practice:
+    - "[ ] Make a small code change"
+    - "[ ] Run tests locally"
+    - "[ ] Format code with Black"
+    - "[ ] Create a feature branch"
+    - "[ ] Make a commit with conventional message"
+    - "[ ] Open a pull request"
+    - "[ ] Respond to code review feedback"
+
+  ready_to_contribute:
+    - "[ ] Can run application locally"
+    - "[ ] Can write and run tests"
+    - "[ ] Can debug issues"
+    - "[ ] Understand Git workflow"
+    - "[ ] Familiar with project conventions"
+    - "[ ] Know how to ask for help"
+
+###############################################################################
+# END OF LOCAL DEVELOPMENT PLAN
+###############################################################################

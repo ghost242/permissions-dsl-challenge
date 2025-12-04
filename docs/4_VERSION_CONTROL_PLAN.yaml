@@ -1,0 +1,403 @@
+###############################################################################
+# Version Control Plan
+# Project: Permission DSL Challenge
+# Version: 1.0.0
+# Created: Stage 3 - System Spec Generation
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "Product Owner"
+  created_date: "2025-12-04"
+
+###############################################################################
+# 1. REPOSITORY STRUCTURE
+###############################################################################
+
+repository:
+  type: "Monorepo"
+  reason: "Single service, simpler management"
+  hosting: "GitHub / GitLab"
+  url_pattern: "https://github.com/{org}/permissions-dsl-challenge"
+
+  directory_structure:
+    root:
+      - ".github/workflows/"          # CI/CD workflows
+      - "src/"                        # Application source code
+      - "tests/"                      # Test files
+      - "docs/"                       # Documentation and specs
+      - "migrations/"                 # Database migration scripts
+      - "schema/"                     # JSON schemas
+      - "scripts/"                    # Utility scripts
+      - "data/"                       # Local database (gitignored)
+
+    source_code:
+      - "src/main.py"                 # FastAPI entry point
+      - "src/models/"                 # Pydantic data models
+      - "src/components/"             # Core logic (Builder, Evaluator)
+      - "src/api/"                    # HTTP routes
+      - "src/database/"               # Database layer
+
+###############################################################################
+# 2. BRANCHING STRATEGY
+###############################################################################
+
+branching:
+  model: "Trunk-Based Development (simplified)"
+  reason: "Simple, fast, suitable for small teams"
+
+  branches:
+    main:
+      description: "Production-ready code"
+      protection_rules:
+        - "Require pull request before merge"
+        - "Require 1 approval"
+        - "Require status checks to pass (tests, linting)"
+        - "No direct pushes (except emergencies)"
+      deployment: "Automatically deploys to production (if CI/CD configured)"
+
+    feature_branches:
+      naming: "feature/{description}"
+      examples:
+        - "feature/implement-builder"
+        - "feature/add-filter-operators"
+        - "feature/improve-error-handling"
+      lifetime: "Short-lived (1-3 days max)"
+      workflow:
+        - "Branch from main"
+        - "Make changes, commit frequently"
+        - "Push to remote"
+        - "Open pull request"
+        - "Get review"
+        - "Merge to main (squash merge)"
+        - "Delete branch"
+
+    bugfix_branches:
+      naming: "fix/{description}"
+      examples:
+        - "fix/permission-check-null-handling"
+        - "fix/policy-validation-error"
+      workflow: "Same as feature branches"
+
+    hotfix_branches:
+      naming: "hotfix/{critical-issue}"
+      when: "Production bug that needs immediate fix"
+      workflow:
+        - "Branch from main"
+        - "Fix the issue"
+        - "Open PR with 'hotfix' label"
+        - "Fast-track review (1 approval sufficient)"
+        - "Merge and deploy immediately"
+
+  deprecated_branches:
+    develop: "Not used (trunk-based, no separate develop branch)"
+    release: "Not used (main is always production-ready)"
+
+###############################################################################
+# 3. COMMIT CONVENTIONS
+###############################################################################
+
+commits:
+  format: "Conventional Commits"
+  pattern: "<type>(<scope>): <description>"
+
+  types:
+    feat: "New feature"
+    fix: "Bug fix"
+    docs: "Documentation only"
+    style: "Code style (formatting, no logic change)"
+    refactor: "Code refactoring"
+    test: "Adding or updating tests"
+    chore: "Build process, dependencies, etc."
+
+  examples:
+    - "feat(evaluator): add 'has' operator support"
+    - "fix(api): handle null user in permission check"
+    - "docs(readme): update setup instructions"
+    - "test(builder): add policy validation tests"
+    - "refactor(filter): simplify operator logic"
+
+  good_practices:
+    - "Use imperative mood (add, not added)"
+    - "Keep first line under 72 characters"
+    - "Reference issue numbers: fixes #123"
+    - "Provide context in body for complex changes"
+
+  bad_examples:
+    - "update" (too vague)
+    - "fixed stuff" (not descriptive)
+    - "WIP" (don't commit work in progress)
+
+###############################################################################
+# 4. PULL REQUEST WORKFLOW
+###############################################################################
+
+pull_requests:
+  required_for: "All changes to main branch"
+
+  template:
+    title: "Clear, descriptive title"
+    sections:
+      - "## What: Brief description of changes"
+      - "## Why: Reason for this change"
+      - "## How: Implementation approach"
+      - "## Testing: How it was tested"
+      - "## Checklist:"
+      - "- [ ] Tests added/updated"
+      - "- [ ] Tests passing"
+      - "- [ ] Documentation updated"
+      - "- [ ] Code follows style guidelines"
+
+  review_process:
+    required_reviewers: 1
+    reviewer_guidelines:
+      - "Check code quality and logic"
+      - "Verify tests are adequate"
+      - "Look for security issues"
+      - "Ensure follows project conventions"
+      - "Test locally if uncertain"
+
+    approval:
+      - "1 approval required for regular PRs"
+      - "For hotfixes: 1 approval (fast-track)"
+      - "Author cannot approve their own PR"
+
+  merge_strategy:
+    default: "Squash and merge"
+    reason: "Keeps main branch history clean"
+    commit_message: "Generated from PR title and number"
+
+  after_merge:
+    - "Delete feature branch automatically"
+    - "CI/CD triggers on push to main"
+    - "Deploy to production (if configured)"
+
+###############################################################################
+# 5. VERSIONING SCHEME
+###############################################################################
+
+versioning:
+  scheme: "Semantic Versioning (SemVer)"
+  format: "MAJOR.MINOR.PATCH"
+
+  rules:
+    major: "Breaking changes (increment: 1.0.0 → 2.0.0)"
+    minor: "New features, backward compatible (increment: 1.0.0 → 1.1.0)"
+    patch: "Bug fixes, backward compatible (increment: 1.0.0 → 1.0.1)"
+
+  examples:
+    - "1.0.0: Initial release"
+    - "1.1.0: Add new filter operator"
+    - "1.1.1: Fix bug in permission evaluation"
+    - "2.0.0: Change API response format (breaking)"
+
+  tagging:
+    format: "v{version}"
+    examples: ["v1.0.0", "v1.1.0", "v2.0.0"]
+    command: "git tag -a v1.0.0 -m 'Release version 1.0.0'"
+    push: "git push origin v1.0.0"
+
+  where_to_store_version:
+    - "pyproject.toml: version field"
+    - "src/__init__.py: __version__ variable"
+    - "Git tags"
+    - "API response: /health endpoint returns version"
+
+###############################################################################
+# 6. CODE REVIEW GUIDELINES
+###############################################################################
+
+code_review:
+  what_to_check:
+    functionality:
+      - "Does the code do what it's supposed to?"
+      - "Are edge cases handled?"
+      - "Is error handling appropriate?"
+
+    code_quality:
+      - "Is the code readable and maintainable?"
+      - "Are functions/classes well-named?"
+      - "Is logic unnecessarily complex?"
+      - "Are there code smells?"
+
+    testing:
+      - "Are there adequate tests?"
+      - "Do tests cover edge cases?"
+      - "Are tests clear and maintainable?"
+
+    security:
+      - "Any SQL injection risks?"
+      - "Input validation proper?"
+      - "Sensitive data handled securely?"
+
+    style:
+      - "Follows black formatting?"
+      - "Type hints present?"
+      - "Docstrings for public functions?"
+
+  feedback_guidelines:
+    - "Be constructive and specific"
+    - "Explain the 'why' behind suggestions"
+    - "Distinguish between: must-fix, should-fix, nice-to-have"
+    - "Acknowledge good code"
+    - "Ask questions rather than demand changes"
+
+  response_time:
+    target: "Within 24 hours on weekdays"
+    priority: "Hotfixes reviewed within 2 hours"
+
+###############################################################################
+# 7. CI/CD INTEGRATION
+###############################################################################
+
+ci_cd_triggers:
+  on_pull_request:
+    - "Run linters (black, mypy)"
+    - "Run all tests"
+    - "Check test coverage >= 80%"
+    - "Security scan (optional)"
+    status_required: "All checks must pass before merge"
+
+  on_push_to_main:
+    - "Run all checks again"
+    - "Build Docker image (optional)"
+    - "Deploy to production (if configured)"
+
+  on_tag_creation:
+    - "Create GitHub release"
+    - "Build and publish artifacts"
+
+###############################################################################
+# 8. GITIGNORE CONFIGURATION
+###############################################################################
+
+gitignore:
+  python:
+    - "__pycache__/"
+    - "*.py[cod]"
+    - ".pytest_cache/"
+    - ".mypy_cache/"
+    - ".coverage"
+    - "htmlcov/"
+    - "*.egg-info/"
+
+  environment:
+    - ".env"
+    - ".env.local"
+    - ".env.production"
+    - "*.secret"
+
+  data:
+    - "data/*.db"
+    - "data/*.sqlite"
+    - "backups/"
+
+  ide:
+    - ".vscode/"
+    - ".idea/"
+    - "*.swp"
+    - ".DS_Store"
+
+  build:
+    - "dist/"
+    - "build/"
+    - "*.tar.gz"
+
+###############################################################################
+# 9. COLLABORATION WORKFLOW
+###############################################################################
+
+workflow:
+  daily_development:
+    morning:
+      - "git pull origin main"
+      - "Create feature branch"
+      - "Work on feature"
+
+    during_day:
+      - "Commit frequently (logical units)"
+      - "Push to remote regularly"
+      - "Keep branch up to date with main if needed"
+
+    end_of_day:
+      - "Push all commits"
+      - "Open PR if feature is complete"
+      - "Or continue tomorrow"
+
+  handling_conflicts:
+    approach: "Rebase on main before opening PR"
+    steps:
+      - "git checkout main"
+      - "git pull"
+      - "git checkout feature/my-feature"
+      - "git rebase main"
+      - "Resolve conflicts if any"
+      - "git push --force-with-lease"
+
+###############################################################################
+# 10. RELEASE PROCESS
+###############################################################################
+
+release:
+  frequency: "As needed (not scheduled)"
+
+  checklist:
+    - "All tests passing"
+    - "Documentation updated"
+    - "CHANGELOG.md updated"
+    - "Version bumped in pyproject.toml"
+    - "Git tag created"
+    - "GitHub release created"
+
+  steps:
+    - "Decide on version number (MAJOR.MINOR.PATCH)"
+    - "Update version in pyproject.toml"
+    - "Update CHANGELOG.md"
+    - "Commit: 'chore: release v1.1.0'"
+    - "Create tag: git tag -a v1.1.0 -m 'Release v1.1.0'"
+    - "Push: git push && git push --tags"
+    - "Create GitHub release with release notes"
+    - "Deploy to production"
+
+  changelog:
+    format: "Keep a Changelog"
+    sections:
+      - "Added: New features"
+      - "Changed: Changes to existing functionality"
+      - "Fixed: Bug fixes"
+      - "Removed: Removed features"
+      - "Security: Security fixes"
+
+###############################################################################
+# 11. BEST PRACTICES
+###############################################################################
+
+best_practices:
+  commits:
+    - "Commit often, push regularly"
+    - "Each commit should be a logical unit"
+    - "Write clear commit messages"
+    - "Don't commit half-finished work"
+
+  branches:
+    - "Keep feature branches short-lived"
+    - "Merge to main frequently"
+    - "Delete branches after merge"
+    - "Don't push directly to main"
+
+  pull_requests:
+    - "Keep PRs small (< 400 lines changed)"
+    - "Write clear descriptions"
+    - "Respond to review comments"
+    - "Don't merge without approval"
+
+  code_organization:
+    - "One feature per PR"
+    - "Refactoring in separate PRs"
+    - "Tests in same PR as feature"
+
+###############################################################################
+# END OF VERSION CONTROL PLAN
+###############################################################################

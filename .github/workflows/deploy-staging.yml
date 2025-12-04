@@ -1,0 +1,144 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging Environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add uv to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/permission-control:staging-${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/permission-control:staging-latest
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/permission-control:staging-latest
+          cache-to: type=inline
+
+      - name: Run smoke tests on image
+        run: |
+          docker run -d --name test-container \
+            -p 8000:8000 \
+            -e DB_TYPE=sqlite \
+            -e SQLITE_PATH=:memory: \
+            ${{ secrets.DOCKER_USERNAME }}/permission-control:staging-${{ github.sha }}
+
+          # Wait for container to start
+          sleep 10
+
+          # Health check
+          curl -f http://localhost:8000/api/v1/health || exit 1
+
+          # Cleanup
+          docker stop test-container
+          docker rm test-container
+
+      - name: Deploy to Railway (optional)
+        if: secrets.RAILWAY_TOKEN != ''
+        run: |
+          # Install Railway CLI
+          npm install -g @railway/cli
+
+          # Deploy to Railway
+          railway up --service permission-control-staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Health check staging
+        run: |
+          # Wait for deployment to complete
+          sleep 15
+
+          # Perform health check
+          for i in {1..10}; do
+            if curl -f ${{ secrets.STAGING_URL }}/api/v1/health; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          echo "❌ Health check failed after 10 attempts"
+          exit 1
+
+      - name: Run integration smoke tests
+        run: |
+          uv run pytest tests/integration/test_api_endpoints.py::TestHealthEndpoint -v
+
+      - name: Notify success
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: 'incoming-webhook'
+          payload: |
+            {
+              "text": "✅ Staging deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment Successful*\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Branch:* ${{ github.ref_name }}\n*URL:* ${{ secrets.STAGING_URL }}"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: 'incoming-webhook'
+          payload: |
+            {
+              "text": "❌ Staging deployment failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment Failed*\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Branch:* ${{ github.ref_name }}"
+                  }
+                }
+              ]
+            }

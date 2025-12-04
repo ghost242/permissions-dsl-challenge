@@ -1,0 +1,703 @@
+###############################################################################
+# CI/CD Pipeline Configuration
+# Project: Permission DSL Challenge
+# Version: 1.0.0
+# Created: Stage 5 - Delivery Pipeline
+# Role: DevOps Engineer (Build & Delivery)
+###############################################################################
+
+metadata:
+  project_name: "permissions-dsl-challenge"
+  service_name: "permission-control"
+  version: "1.0.0"
+  created_by: "DevOps Engineer (Build & Delivery)"
+  created_date: "2025-12-04"
+
+###############################################################################
+# 1. CI/CD OVERVIEW
+###############################################################################
+
+overview:
+  purpose: "Automated build, test, and deployment pipeline"
+  philosophy: |
+    Fast feedback, high confidence, minimal manual intervention.
+    Every commit is a potential release candidate.
+
+  ci_cd_platform:
+    primary: "GitHub Actions"
+    rationale: |
+      - Native GitHub integration
+      - Free for public repos, generous for private
+      - Rich ecosystem of actions
+      - Simple YAML configuration
+
+    alternatives:
+      - "GitLab CI (if using GitLab)"
+      - "Circle CI"
+      - "Jenkins (self-hosted)"
+
+  pipeline_stages:
+    1: "Code Quality Checks"
+    2: "Build & Test"
+    3: "Security Scanning"
+    4: "Build Artifacts"
+    5: "Deploy to Staging"
+    6: "Deploy to Production"
+
+###############################################################################
+# 2. CONTINUOUS INTEGRATION (CI)
+###############################################################################
+
+continuous_integration:
+  triggers:
+    on_pull_request:
+      branches: ["main"]
+      events: ["opened", "synchronize", "reopened"]
+      description: "Run checks on every PR commit"
+
+    on_push:
+      branches: ["main"]
+      description: "Run full pipeline on merge to main"
+
+    on_schedule:
+      cron: "0 2 * * *"  # Daily at 2 AM UTC
+      description: "Nightly full test suite"
+
+  code_quality_stage:
+    name: "Code Quality & Linting"
+    timeout: "5 minutes"
+
+    jobs:
+      lint_python:
+        name: "Python Linting"
+        steps:
+          - name: "Checkout code"
+            action: "actions/checkout@v4"
+
+          - name: "Setup Python"
+            action: "actions/setup-python@v5"
+            python_version: "3.13"
+
+          - name: "Install uv"
+            run: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+          - name: "Install dependencies"
+            run: "uv sync"
+
+          - name: "Run Black formatter check"
+            run: "uv run black --check src/ tests/"
+            rationale: "Enforce consistent code formatting"
+
+          - name: "Run isort import check"
+            run: "uv run isort --check-only src/ tests/"
+            rationale: "Enforce import ordering"
+
+          - name: "Run Ruff linter"
+            run: "uv run ruff check src/ tests/"
+            rationale: "Fast Python linter for code quality"
+
+      type_checking:
+        name: "Static Type Checking"
+        steps:
+          - name: "Setup and install"
+            run: "uv sync"
+
+          - name: "Run mypy"
+            run: "uv run mypy src/"
+            config: "pyproject.toml"
+            strict_optional: true
+
+  build_test_stage:
+    name: "Build & Test"
+    timeout: "15 minutes"
+
+    jobs:
+      unit_tests:
+        name: "Unit Tests"
+        strategy:
+          matrix:
+            python_version: ["3.13"]
+
+        steps:
+          - name: "Checkout code"
+            action: "actions/checkout@v4"
+
+          - name: "Setup Python ${{ matrix.python-version }}"
+            action: "actions/setup-python@v5"
+
+          - name: "Install dependencies"
+            run: "uv sync"
+
+          - name: "Run unit tests"
+            run: "uv run pytest tests/unit/ -v --tb=short"
+
+          - name: "Upload test results"
+            action: "actions/upload-artifact@v4"
+            if: "always()"
+            with:
+              name: "unit-test-results"
+              path: "test-results/"
+
+      integration_tests:
+        name: "Integration Tests"
+        needs: ["unit_tests"]
+
+        steps:
+          - name: "Checkout code"
+
+          - name: "Setup Python"
+
+          - name: "Install dependencies"
+            run: "uv sync"
+
+          - name: "Run database migrations"
+            run: |
+              mkdir -p data
+              uv run python -c "
+              from src.database.connection import DatabaseConnection, DatabaseConfig
+              config = DatabaseConfig(db_type='sqlite', sqlite_path='data/test.db')
+              db = DatabaseConnection(config)
+              db.connect()
+              with open('migrations/001_initial_schema.sql') as f:
+                  db.get_connection().executescript(f.read())
+              with open('migrations/002_add_indexes.sql') as f:
+                  db.get_connection().executescript(f.read())
+              db.commit()
+              db.close()
+              "
+
+          - name: "Run integration tests"
+            run: "uv run pytest tests/integration/ -v"
+
+      coverage_report:
+        name: "Test Coverage"
+        needs: ["unit_tests", "integration_tests"]
+
+        steps:
+          - name: "Run tests with coverage"
+            run: "uv run pytest --cov=src --cov-report=xml --cov-report=html --cov-report=term tests/"
+
+          - name: "Check coverage threshold"
+            run: |
+              COVERAGE=$(uv run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
+              if (( $(echo "$COVERAGE < 85" | bc -l) )); then
+                echo "Coverage $COVERAGE% is below threshold 85%"
+                exit 1
+              fi
+              echo "Coverage $COVERAGE% meets threshold"
+
+          - name: "Upload coverage to Codecov"
+            action: "codecov/codecov-action@v4"
+            with:
+              file: "./coverage.xml"
+              flags: "unittests"
+
+          - name: "Upload coverage HTML report"
+            action: "actions/upload-artifact@v4"
+            with:
+              name: "coverage-report"
+              path: "htmlcov/"
+
+  security_stage:
+    name: "Security Scanning"
+    timeout: "10 minutes"
+
+    jobs:
+      dependency_audit:
+        name: "Dependency Security Audit"
+        steps:
+          - name: "Checkout code"
+
+          - name: "Setup Python"
+
+          - name: "Install dependencies"
+            run: "uv sync"
+
+          - name: "Run pip-audit"
+            run: "uv run pip-audit"
+            continue_on_error: true
+            rationale: "Check for known vulnerabilities in dependencies"
+
+          - name: "Run safety check"
+            run: "uv run safety check"
+            continue_on_error: true
+
+      code_security_scan:
+        name: "Code Security Scanning"
+        steps:
+          - name: "Checkout code"
+
+          - name: "Run Bandit"
+            run: "uv run bandit -r src/ -f json -o bandit-report.json"
+            continue_on_error: true
+            rationale: "Find common security issues in Python code"
+
+          - name: "Upload Bandit report"
+            action: "actions/upload-artifact@v4"
+            with:
+              name: "bandit-security-report"
+              path: "bandit-report.json"
+
+      secrets_scan:
+        name: "Secrets Detection"
+        steps:
+          - name: "Checkout code"
+
+          - name: "Run gitleaks"
+            action: "gitleaks/gitleaks-action@v2"
+            rationale: "Prevent secrets from being committed"
+
+###############################################################################
+# 3. CONTINUOUS DEPLOYMENT (CD)
+###############################################################################
+
+continuous_deployment:
+  staging_deployment:
+    name: "Deploy to Staging"
+    trigger: "On push to main (after CI passes)"
+    environment: "staging"
+    timeout: "10 minutes"
+
+    approval_required: false
+    automatic: true
+
+    steps:
+      - name: "Checkout code"
+
+      - name: "Build Docker image"
+        run: |
+          docker build -t permission-control:staging-${{ github.sha }} .
+          docker tag permission-control:staging-${{ github.sha }} permission-control:staging-latest
+
+      - name: "Run smoke tests on image"
+        run: |
+          docker run -d --name test-container \
+            -p 8000:8000 \
+            -e DB_TYPE=sqlite \
+            -e SQLITE_PATH=:memory: \
+            permission-control:staging-${{ github.sha }}
+          sleep 5
+          curl -f http://localhost:8000/api/v1/health || exit 1
+          docker stop test-container
+          docker rm test-container
+
+      - name: "Push to container registry"
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push permission-control:staging-latest
+          docker push permission-control:staging-${{ github.sha }}
+
+      - name: "Deploy to staging environment"
+        deployment_methods:
+          railway:
+            action: "railwayapp/cli@v3"
+            run: "railway up --service permission-control-staging"
+
+          render:
+            action: "render-deploy/action@v1"
+            with:
+              service_id: "${{ secrets.RENDER_STAGING_SERVICE_ID }}"
+
+          docker_compose:
+            run: |
+              ssh ${{ secrets.STAGING_HOST }} << 'EOF'
+              cd /opt/permission-control
+              docker-compose pull
+              docker-compose up -d
+              EOF
+
+      - name: "Health check staging"
+        run: |
+          sleep 10
+          curl -f ${{ secrets.STAGING_URL }}/api/v1/health || exit 1
+
+      - name: "Run smoke tests"
+        run: |
+          uv run pytest tests/integration/test_api_endpoints.py::TestHealthEndpoint -v \
+            --base-url=${{ secrets.STAGING_URL }}
+
+      - name: "Notify deployment"
+        action: "slackapi/slack-github-action@v1"
+        with:
+          webhook_url: "${{ secrets.SLACK_WEBHOOK }}"
+          payload: |
+            {
+              "text": "✅ Staging deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment Successful*\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+
+  production_deployment:
+    name: "Deploy to Production"
+    trigger: "Manual approval after staging deployment"
+    environment: "production"
+    timeout: "15 minutes"
+
+    approval_required: true
+    approvers: ["team-leads", "devops-team"]
+
+    pre_deployment_checks:
+      - "Staging deployment successful"
+      - "All tests passing"
+      - "Manual approval obtained"
+      - "Change window (if applicable)"
+
+    steps:
+      - name: "Checkout code"
+
+      - name: "Build production Docker image"
+        run: |
+          docker build -t permission-control:prod-${{ github.sha }} .
+          docker tag permission-control:prod-${{ github.sha }} permission-control:prod-latest
+          docker tag permission-control:prod-${{ github.sha }} permission-control:v${{ github.ref_name }}
+
+      - name: "Run security scan on image"
+        action: "aquasecurity/trivy-action@master"
+        with:
+          image_ref: "permission-control:prod-${{ github.sha }}"
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: "Push to production registry"
+        run: |
+          docker push permission-control:prod-latest
+          docker push permission-control:prod-${{ github.sha }}
+          docker push permission-control:v${{ github.ref_name }}
+
+      - name: "Backup production database"
+        run: |
+          ssh ${{ secrets.PROD_HOST }} "pg_dump -U $DB_USER $DB_NAME > /backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql"
+
+      - name: "Run database migrations"
+        run: |
+          ssh ${{ secrets.PROD_HOST }} << 'EOF'
+          cd /opt/permission-control
+          # Run migrations (if any)
+          docker exec permission-control-db psql -U $DB_USER -d $DB_NAME -f migrations/001_initial_schema.sql
+          EOF
+
+      - name: "Deploy to production"
+        deployment_methods:
+          blue_green:
+            description: "Zero-downtime blue-green deployment"
+            steps:
+              - "Deploy to inactive environment (green)"
+              - "Run health checks on green"
+              - "Switch load balancer to green"
+              - "Keep blue running for quick rollback"
+              - "After 15 minutes, shut down blue"
+
+          rolling:
+            description: "Rolling update across instances"
+            steps:
+              - "Deploy to first instance"
+              - "Health check first instance"
+              - "Deploy to remaining instances one by one"
+
+          simple:
+            description: "Simple single-instance update"
+            run: |
+              ssh ${{ secrets.PROD_HOST }} << 'EOF'
+              cd /opt/permission-control
+              docker-compose pull
+              docker-compose up -d --no-deps --build permission-control
+              EOF
+
+      - name: "Health check production"
+        run: |
+          for i in {1..10}; do
+            if curl -f ${{ secrets.PROD_URL }}/api/v1/health; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Health check failed, retrying..."
+            sleep 5
+          done
+          echo "Health check failed after 10 attempts"
+          exit 1
+
+      - name: "Run production smoke tests"
+        run: |
+          uv run pytest tests/integration/test_api_endpoints.py::TestHealthEndpoint -v \
+            --base-url=${{ secrets.PROD_URL }}
+
+      - name: "Monitor for errors"
+        run: |
+          echo "Monitoring production for 5 minutes..."
+          sleep 300
+          # Check error rate, response times, etc.
+
+      - name: "Tag release"
+        run: |
+          git tag -a v${{ github.ref_name }} -m "Production release v${{ github.ref_name }}"
+          git push origin v${{ github.ref_name }}
+
+      - name: "Create GitHub release"
+        action: "actions/create-release@v1"
+        with:
+          tag_name: "v${{ github.ref_name }}"
+          release_name: "Release v${{ github.ref_name }}"
+          body: "Deployed to production"
+
+      - name: "Notify deployment"
+        action: "slackapi/slack-github-action@v1"
+        with:
+          webhook_url: "${{ secrets.SLACK_WEBHOOK }}"
+          payload: |
+            {
+              "text": "🚀 Production deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production Deployment Successful*\nVersion: v${{ github.ref_name }}\nCommit: ${{ github.sha }}\nDeployed by: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+
+  rollback_procedure:
+    name: "Rollback to Previous Version"
+    trigger: "Manual workflow dispatch"
+    timeout: "5 minutes"
+
+    inputs:
+      target_version:
+        description: "Version to rollback to (e.g., v1.0.0)"
+        required: true
+
+    steps:
+      - name: "Validate target version"
+        run: |
+          docker pull permission-control:${{ inputs.target_version }}
+
+      - name: "Stop current version"
+        run: |
+          ssh ${{ secrets.PROD_HOST }} "docker stop permission-control"
+
+      - name: "Start target version"
+        run: |
+          ssh ${{ secrets.PROD_HOST }} << 'EOF'
+          docker run -d --name permission-control-rollback \
+            -p 8000:8000 \
+            --env-file /opt/permission-control/.env \
+            permission-control:${{ inputs.target_version }}
+          EOF
+
+      - name: "Health check"
+        run: |
+          sleep 10
+          curl -f ${{ secrets.PROD_URL }}/api/v1/health || exit 1
+
+      - name: "Notify rollback"
+        action: "slackapi/slack-github-action@v1"
+        with:
+          payload: |
+            {
+              "text": "⚠️ Production rollback completed to ${{ inputs.target_version }}"
+            }
+
+###############################################################################
+# 4. BUILD ARTIFACTS
+###############################################################################
+
+build_artifacts:
+  docker_image:
+    name: "Docker Container Image"
+    registry: "Docker Hub or GitHub Container Registry"
+
+    naming_convention:
+      development: "permission-control:dev-{sha}"
+      staging: "permission-control:staging-{sha}"
+      production: "permission-control:prod-{sha}"
+      tagged: "permission-control:v{version}"
+
+    layers_optimization:
+      base_image: "python:3.13-slim"
+      multi_stage: true
+      cache_dependencies: true
+
+    size_target: "< 500MB"
+
+    tags:
+      - "Latest (main branch)"
+      - "Git SHA (all commits)"
+      - "Semantic version (releases)"
+      - "Environment-specific"
+
+  python_package:
+    name: "Python Package (optional)"
+    format: "Wheel (.whl)"
+    command: "uv build"
+    publish_to: "PyPI (if open source) or private registry"
+
+  documentation:
+    name: "API Documentation"
+    format: "OpenAPI JSON/YAML"
+    endpoint: "/openapi.json"
+    hosting: "Served by application"
+
+###############################################################################
+# 5. ENVIRONMENT VARIABLES & SECRETS
+###############################################################################
+
+environment_configuration:
+  secrets_management:
+    github_secrets:
+      - "DOCKER_USERNAME"
+      - "DOCKER_PASSWORD"
+      - "STAGING_HOST"
+      - "STAGING_URL"
+      - "STAGING_DB_PASSWORD"
+      - "PROD_HOST"
+      - "PROD_URL"
+      - "PROD_DB_PASSWORD"
+      - "SLACK_WEBHOOK"
+      - "CODECOV_TOKEN"
+
+  environment_variables:
+    staging:
+      - "DB_TYPE=postgresql"
+      - "POSTGRES_HOST=${{ secrets.STAGING_DB_HOST }}"
+      - "POSTGRES_PORT=5432"
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}"
+      - "POSTGRES_DATABASE=permissions_staging"
+      - "LOG_LEVEL=debug"
+
+    production:
+      - "DB_TYPE=postgresql"
+      - "POSTGRES_HOST=${{ secrets.PROD_DB_HOST }}"
+      - "POSTGRES_PORT=5432"
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}"
+      - "POSTGRES_DATABASE=permissions_prod"
+      - "LOG_LEVEL=info"
+
+###############################################################################
+# 6. MONITORING & NOTIFICATIONS
+###############################################################################
+
+monitoring:
+  build_notifications:
+    channels: ["Slack", "Email"]
+
+    triggers:
+      success:
+        - "Production deployment"
+        - "Tagged release"
+
+      failure:
+        - "Any CI check failure"
+        - "Staging deployment failure"
+        - "Production deployment failure"
+
+  metrics:
+    tracked_metrics:
+      - "Build duration"
+      - "Test execution time"
+      - "Deployment frequency"
+      - "Deployment success rate"
+      - "Time to recovery"
+
+  dashboards:
+    github_actions: "Native GitHub Actions insights"
+    custom: "Grafana dashboard (optional)"
+
+###############################################################################
+# 7. PERFORMANCE OPTIMIZATION
+###############################################################################
+
+performance_optimization:
+  caching:
+    dependencies:
+      cache: "uv cache"
+      key: "${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}"
+
+    docker_layers:
+      strategy: "Cache Python dependencies separately from application code"
+
+  parallel_execution:
+    jobs:
+      - "Run unit and integration tests in parallel"
+      - "Run linting and type checking in parallel"
+      - "Run security scans concurrently"
+
+  resource_allocation:
+    runners:
+      default: "ubuntu-latest"
+      size: "standard (2 vCPU, 7GB RAM)"
+      cost: "Free for public repos"
+
+###############################################################################
+# 8. GITHUB ACTIONS WORKFLOW FILES
+###############################################################################
+
+workflow_files:
+  ci_workflow:
+    file: ".github/workflows/ci.yml"
+    name: "Continuous Integration"
+    triggers: ["pull_request", "push to main"]
+    description: "Run tests, linting, and security checks"
+
+  cd_staging_workflow:
+    file: ".github/workflows/deploy-staging.yml"
+    name: "Deploy to Staging"
+    triggers: ["push to main"]
+    description: "Automatic deployment to staging environment"
+
+  cd_production_workflow:
+    file: ".github/workflows/deploy-production.yml"
+    name: "Deploy to Production"
+    triggers: ["workflow_dispatch", "tag creation"]
+    description: "Manual deployment to production with approval"
+
+  rollback_workflow:
+    file: ".github/workflows/rollback.yml"
+    name: "Rollback Production"
+    triggers: ["workflow_dispatch"]
+    description: "Emergency rollback to previous version"
+
+###############################################################################
+# 9. CI/CD BEST PRACTICES
+###############################################################################
+
+best_practices:
+  general:
+    - "Keep pipelines fast (< 10 minutes for CI)"
+    - "Fail fast (run quick checks first)"
+    - "Make pipelines idempotent"
+    - "Version control all pipeline config"
+    - "Use semantic commit messages for changelog generation"
+
+  testing:
+    - "Run unit tests before integration tests"
+    - "Use test parallelization"
+    - "Cache test dependencies"
+    - "Generate test reports"
+
+  deployment:
+    - "Always backup before deploying"
+    - "Use health checks before marking deployment successful"
+    - "Keep previous version for quick rollback"
+    - "Monitor after deployment (15+ minutes)"
+    - "Automate staging, gate production"
+
+  security:
+    - "Never commit secrets to repository"
+    - "Scan dependencies regularly"
+    - "Use minimal base images"
+    - "Sign and verify container images"
+    - "Rotate secrets regularly"
+
+###############################################################################
+# END OF CI/CD PIPELINE CONFIGURATION
+###############################################################################
