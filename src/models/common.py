@@ -1,7 +1,7 @@
 """Common types and enums for the permissions system."""
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 

@@ -5,8 +5,6 @@ Tests all API endpoints with real database and HTTP client.
 
 import json
 
-import pytest
-
 
 class TestHealthEndpoint:
     """Test /health endpoint."""

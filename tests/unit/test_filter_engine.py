@@ -3,8 +3,6 @@
 Tests all filter operators and property resolution logic.
 """
 
-import pytest
-
 from src.components.filter_engine import FilterEngine
 from src.models.common import Filter, FilterOperator
 

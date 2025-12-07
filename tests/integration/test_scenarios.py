@@ -5,8 +5,6 @@ These tests validate the complete system against all documented scenarios.
 
 import json
 
-import pytest
-
 
 def setup_base_data(test_client):
     """Setup basic entities needed for all scenarios."""

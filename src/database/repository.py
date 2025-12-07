@@ -5,11 +5,17 @@ This module provides data access methods for all entities in the system.
 
 import json
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from src.database.connection import DatabaseConnection
-from src.models.entities import (Document, Project, ProjectMembership, Team,
-                                 TeamMembership, User)
+from src.models.entities import (
+    Document,
+    Project,
+    ProjectMembership,
+    Team,
+    TeamMembership,
+    User,
+)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 

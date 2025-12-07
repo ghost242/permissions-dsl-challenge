@@ -9,8 +9,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, Field
 
 from src.models.common import Effect, Filter, FilterOperator, Permission
-from src.models.policies import (ResourceInfo, ResourcePolicy,
-                                 ResourcePolicyDocument)
+from src.models.policies import ResourceInfo, ResourcePolicy, ResourcePolicyDocument
 
 
 class PolicyOptions(BaseModel):

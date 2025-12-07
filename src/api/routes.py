@@ -7,11 +7,11 @@ import time
 from typing import Optional, Union
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.components.builder import Builder, PolicyOptions
 from src.components.evaluator import Evaluator
-from src.database.connection import DatabaseConnection, get_database
+from src.database.connection import get_database
 from src.database.repository import Repository
 from src.models.common import Permission
 from src.models.policies import ResourcePolicyDocument
@@ -162,7 +162,7 @@ async def get_resource_policy(
                 status_code=400,
                 detail={
                     "error": "VALIDATION_ERROR",
-                    "message": f"Invalid resourceId format. Expected: urn:resource:{{teamId}}:{{projectId}}:{{docId}}",
+                    "message": "Invalid resourceId format. Expected: urn:resource:{teamId}:{projectId}:{docId}",
                 },
             )
 
@@ -182,7 +182,7 @@ async def get_resource_policy(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500,
             detail={
@@ -318,7 +318,7 @@ async def check_permission(
                 status_code=400,
                 detail={
                     "error": "VALIDATION_ERROR",
-                    "message": f"Invalid resourceId format",
+                    "message": "Invalid resourceId format",
                 },
             )
 
@@ -390,7 +390,7 @@ async def check_permission(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500,
             detail={
