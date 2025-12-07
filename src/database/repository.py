@@ -8,14 +8,8 @@ from datetime import datetime
 from typing import Optional
 
 from src.database.connection import DatabaseConnection
-from src.models.entities import (
-    Document,
-    Project,
-    ProjectMembership,
-    Team,
-    TeamMembership,
-    User,
-)
+from src.models.entities import (Document, Project, ProjectMembership, Team,
+                                 TeamMembership, User)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 

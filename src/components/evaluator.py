@@ -9,14 +9,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from src.components.filter_engine import FilterEngine
 from src.models.common import Effect, Permission
-from src.models.entities import (
-    Document,
-    Project,
-    ProjectMembership,
-    Team,
-    TeamMembership,
-    User,
-)
+from src.models.entities import (Document, Project, ProjectMembership, Team,
+                                 TeamMembership, User)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 

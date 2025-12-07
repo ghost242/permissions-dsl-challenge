@@ -5,18 +5,12 @@ Tests permission evaluation logic, policy precedence, and URN handling.
 
 from datetime import datetime
 
-
 from src.components.evaluator import Evaluator
 from src.models.common import Effect, Filter, FilterOperator, Permission
-from src.models.entities import (
-    Document,
-    Project,
-    ProjectMembership,
-    Team,
-    TeamMembership,
-    User,
-)
-from src.models.policies import ResourceInfo, ResourcePolicy, ResourcePolicyDocument
+from src.models.entities import (Document, Project, ProjectMembership, Team,
+                                 TeamMembership, User)
+from src.models.policies import (ResourceInfo, ResourcePolicy,
+                                 ResourcePolicyDocument)
 
 
 class TestURNHandling:
