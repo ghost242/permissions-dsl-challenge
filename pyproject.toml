@@ -20,6 +20,8 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "httpx>=0.24.0",
     "pytest-cov>=7.0.0",
+    "isort>=7.0.0",
+    "ruff>=0.14.8",
 ]
 postgres = [
     "psycopg2-binary>=2.9.0",

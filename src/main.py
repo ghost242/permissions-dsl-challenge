@@ -5,13 +5,13 @@ This module initializes and configures the FastAPI application.
 
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.api.routes import router
-from src.database.connection import get_database, close_database
-
+from src.database.connection import close_database, get_database
 
 # Configure logging
 logging.basicConfig(

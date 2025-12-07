@@ -4,17 +4,17 @@ This module implements all HTTP endpoints for the service.
 """
 
 import time
-from typing import Union, Optional
-from fastapi import APIRouter, HTTPException, Query, Body, Depends
+from typing import Optional, Union
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src.database.connection import get_database, DatabaseConnection
-from src.database.repository import Repository
 from src.components.builder import Builder, PolicyOptions
 from src.components.evaluator import Evaluator
+from src.database.connection import DatabaseConnection, get_database
+from src.database.repository import Repository
 from src.models.common import Permission
 from src.models.policies import ResourcePolicyDocument
-
 
 # -------------------------------------------------------------------------
 # Response models

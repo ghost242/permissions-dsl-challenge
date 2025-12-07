@@ -3,19 +3,16 @@
 Tests permission evaluation logic, policy precedence, and URN handling.
 """
 
-import pytest
 from datetime import datetime
-from src.components.evaluator import Evaluator, EvaluationResult
-from src.models.common import Permission, Effect, Filter, FilterOperator
-from src.models.entities import (
-    User,
-    Document,
-    Team,
-    Project,
-    TeamMembership,
-    ProjectMembership,
-)
-from src.models.policies import ResourcePolicyDocument, ResourcePolicy, ResourceInfo
+
+import pytest
+
+from src.components.evaluator import EvaluationResult, Evaluator
+from src.models.common import Effect, Filter, FilterOperator, Permission
+from src.models.entities import (Document, Project, ProjectMembership, Team,
+                                 TeamMembership, User)
+from src.models.policies import (ResourceInfo, ResourcePolicy,
+                                 ResourcePolicyDocument)
 
 
 class TestURNHandling:

@@ -1,29 +1,10 @@
 """Data models for the permissions system."""
 
-from .common import (
-    Permission,
-    Effect,
-    FilterOperator,
-    Filter,
-)
-from .entities import (
-    User,
-    Team,
-    Project,
-    Document,
-    TeamMembership,
-    ProjectMembership,
-    Role,
-    PlanType,
-    Visibility,
-)
-from .policies import (
-    UserPolicy,
-    UserPolicyDocument,
-    ResourceInfo,
-    ResourcePolicy,
-    ResourcePolicyDocument,
-)
+from .common import Effect, Filter, FilterOperator, Permission
+from .entities import (Document, PlanType, Project, ProjectMembership, Role,
+                       Team, TeamMembership, User, Visibility)
+from .policies import (ResourceInfo, ResourcePolicy, ResourcePolicyDocument,
+                       UserPolicy, UserPolicyDocument)
 
 __all__ = [
     # Common types

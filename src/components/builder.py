@@ -4,10 +4,13 @@ This module provides functionality to build complete policy documents from
 simple options or to validate and process full policy documents.
 """
 
-from typing import Union, Optional
+from typing import Optional, Union
+
 from pydantic import BaseModel, Field
-from src.models.common import Permission, Effect, Filter, FilterOperator
-from src.models.policies import ResourcePolicyDocument, ResourcePolicy, ResourceInfo
+
+from src.models.common import Effect, Filter, FilterOperator, Permission
+from src.models.policies import (ResourceInfo, ResourcePolicy,
+                                 ResourcePolicyDocument)
 
 
 class PolicyOptions(BaseModel):

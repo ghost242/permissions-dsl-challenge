@@ -1,8 +1,8 @@
 """Core components for permission control."""
 
-from .filter_engine import FilterEngine
-from .evaluator import Evaluator, EvaluationResult
 from .builder import Builder, PolicyOptions
+from .evaluator import EvaluationResult, Evaluator
+from .filter_engine import FilterEngine
 
 __all__ = [
     "FilterEngine",

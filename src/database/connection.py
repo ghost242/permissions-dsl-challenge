@@ -5,8 +5,8 @@ This module handles database connections for both SQLite (local) and PostgreSQL 
 
 import os
 import sqlite3
-from typing import Optional
 from contextlib import contextmanager
+from typing import Optional
 
 
 class DatabaseConfig:

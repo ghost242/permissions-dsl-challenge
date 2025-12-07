@@ -1,8 +1,9 @@
 """Unit tests for Builder component."""
 
 import pytest
+
 from src.components.builder import Builder, PolicyOptions
-from src.models.common import Permission, Effect
+from src.models.common import Effect, Permission
 from src.models.policies import ResourcePolicyDocument
 
 

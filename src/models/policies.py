@@ -1,9 +1,10 @@
 """Policy models for the permissions system."""
 
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
-from .common import Permission, Effect, Filter
+from .common import Effect, Filter, Permission
 
 
 class UserPolicy(BaseModel):

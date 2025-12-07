@@ -5,6 +5,7 @@ defined in the permissions DSL.
 """
 
 from typing import Any, Dict
+
 from src.models.common import Filter, FilterOperator
 
 

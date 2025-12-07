@@ -1,6 +1,7 @@
 """Database layer for data access."""
 
-from .connection import DatabaseConnection, DatabaseConfig, get_database, close_database
+from .connection import (DatabaseConfig, DatabaseConnection, close_database,
+                         get_database)
 from .repository import Repository
 
 __all__ = [

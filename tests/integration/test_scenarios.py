@@ -3,8 +3,9 @@
 These tests validate the complete system against all documented scenarios.
 """
 
-import pytest
 import json
+
+import pytest
 
 
 def setup_base_data(test_client):

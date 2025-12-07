@@ -1,10 +1,12 @@
 """Unit tests for Repository (database layer)."""
 
 import pytest
+
 from src.database.repository import Repository
-from src.models.entities import User, Team, Document
-from src.models.policies import ResourcePolicyDocument, ResourceInfo, ResourcePolicy
-from src.models.common import Permission, Effect
+from src.models.common import Effect, Permission
+from src.models.entities import Document, Team, User
+from src.models.policies import (ResourceInfo, ResourcePolicy,
+                                 ResourcePolicyDocument)
 
 
 class TestUserOperations:

@@ -5,18 +5,13 @@ whether a user has a specific permission on a resource.
 """
 
 import re
-from typing import Dict, Any, Optional, Tuple
-from src.models.common import Permission, Effect
-from src.models.entities import (
-    User,
-    Document,
-    Team,
-    Project,
-    TeamMembership,
-    ProjectMembership,
-)
-from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
+from typing import Any, Dict, Optional, Tuple
+
 from src.components.filter_engine import FilterEngine
+from src.models.common import Effect, Permission
+from src.models.entities import (Document, Project, ProjectMembership, Team,
+                                 TeamMembership, User)
+from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 
 class EvaluationResult:

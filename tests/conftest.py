@@ -6,7 +6,7 @@ This module provides common fixtures used across all tests.
 import pytest
 from fastapi.testclient import TestClient
 
-from src.database.connection import DatabaseConnection, DatabaseConfig
+from src.database.connection import DatabaseConfig, DatabaseConnection
 from src.database.repository import Repository
 from src.main import app
 

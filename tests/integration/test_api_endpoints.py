@@ -3,8 +3,9 @@
 Tests all API endpoints with real database and HTTP client.
 """
 
-import pytest
 import json
+
+import pytest
 
 
 class TestHealthEndpoint:
