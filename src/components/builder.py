@@ -4,13 +4,10 @@ This module provides functionality to build complete policy documents from
 simple options or to validate and process full policy documents.
 """
 
-from typing import Optional, Union
-
 from pydantic import BaseModel, Field
 
 from src.models.common import Effect, Filter, FilterOperator, Permission
-from src.models.policies import (ResourceInfo, ResourcePolicy,
-                                 ResourcePolicyDocument)
+from src.models.policies import ResourceInfo, ResourcePolicy, ResourcePolicyDocument
 
 
 class PolicyOptions(BaseModel):
@@ -40,8 +37,8 @@ class Builder:
 
     def build_policy_document(
         self,
-        input_data: Union[ResourcePolicyDocument, PolicyOptions],
-        creator_id: Optional[str] = None,
+        input_data: ResourcePolicyDocument | PolicyOptions,
+        creator_id: str | None = None,
     ) -> ResourcePolicyDocument:
         """Build or validate a policy document.
 
@@ -79,7 +76,7 @@ class Builder:
         return self._build_from_options(input_data, creator_id)
 
     def _build_from_options(
-        self, options: PolicyOptions, creator_id: Optional[str] = None
+        self, options: PolicyOptions, creator_id: str | None = None
     ) -> ResourcePolicyDocument:
         """Build a complete policy document from simple options.
 
@@ -130,7 +127,7 @@ class Builder:
 
     def merge_policies(
         self,
-        existing_doc: Optional[ResourcePolicyDocument],
+        existing_doc: ResourcePolicyDocument | None,
         new_doc: ResourcePolicyDocument,
     ) -> ResourcePolicyDocument:
         """Merge new policies with existing policy document.

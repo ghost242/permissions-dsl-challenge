@@ -4,7 +4,7 @@ This module provides the core filter evaluation logic that supports all operator
 defined in the permissions DSL.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from src.models.common import Filter, FilterOperator
 
@@ -13,7 +13,7 @@ class FilterEngine:
     """Engine for evaluating filter conditions against context objects."""
 
     def evaluate_filter(
-        self, filter_condition: Filter, context: Dict[str, Any]
+        self, filter_condition: Filter, context: dict[str, Any]
     ) -> bool:
         """Evaluate a single filter condition against the provided context.
 
@@ -41,7 +41,7 @@ class FilterEngine:
         # Evaluate based on operator
         return self._apply_operator(prop_value, filter_condition.op, comparison_value)
 
-    def evaluate_filters(self, filters: list[Filter], context: Dict[str, Any]) -> bool:
+    def evaluate_filters(self, filters: list[Filter], context: dict[str, Any]) -> bool:
         """Evaluate multiple filter conditions (AND logic).
 
         All filters must be satisfied for this to return True.
@@ -58,7 +58,7 @@ class FilterEngine:
 
         return all(self.evaluate_filter(f, context) for f in filters)
 
-    def _resolve_property(self, prop_path: str, context: Dict[str, Any]) -> Any:
+    def _resolve_property(self, prop_path: str, context: dict[str, Any]) -> Any:
         """Resolve a property path from the context.
 
         Args:
@@ -83,7 +83,7 @@ class FilterEngine:
 
         return current
 
-    def _resolve_value(self, value: Any, context: Dict[str, Any]) -> Any:
+    def _resolve_value(self, value: Any, context: dict[str, Any]) -> Any:
         """Resolve a value which might be a reference or a literal.
 
         If value is a string starting with a context key (user., document., etc.),
@@ -100,7 +100,7 @@ class FilterEngine:
             return value
 
         # Check if this looks like a property reference
-        if "." in value and any(value.startswith(f"{key}.") for key in context.keys()):
+        if "." in value and any(value.startswith(f"{key}.") for key in context):
             return self._resolve_property(value, context)
 
         return value
@@ -166,16 +166,20 @@ class FilterEngine:
             return left not in right
 
         elif operator == FilterOperator.HAS:  # "has" - substring/contains check
-            if isinstance(left, str) and isinstance(right, str):
-                return right in left
-            elif isinstance(left, (list, tuple, set)):
+            if (
+                isinstance(left, str)
+                and isinstance(right, str)
+                or isinstance(left, (list, tuple, set))
+            ):
                 return right in left
             return False
 
         elif operator == FilterOperator.HAS_NOT:  # "has not"
-            if isinstance(left, str) and isinstance(right, str):
-                return right not in left
-            elif isinstance(left, (list, tuple, set)):
+            if (
+                isinstance(left, str)
+                and isinstance(right, str)
+                or isinstance(left, (list, tuple, set))
+            ):
                 return right not in left
             return True
 

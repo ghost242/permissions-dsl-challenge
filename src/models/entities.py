@@ -5,7 +5,6 @@ These models match the specifications from README.md
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -79,7 +78,7 @@ class Document(BaseModel):
     title: str = Field(..., description="Document title")
     projectId: str = Field(..., description="Project ID", alias="projectId")
     creatorId: str = Field(..., description="Creator user ID", alias="creatorId")
-    deletedAt: Optional[datetime] = Field(
+    deletedAt: datetime | None = Field(
         default=None,
         description="Deletion timestamp, None if not deleted",
         alias="deletedAt",

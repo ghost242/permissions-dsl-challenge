@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
 
 from pydantic import BaseModel, Field, constr
 
@@ -45,18 +44,18 @@ class Op(Enum):
 
 
 class FilterItem(BaseModel):
-    prop: Optional[str] = None
-    op: Optional[Op] = None
-    value: Optional[str] = None
+    prop: str | None = None
+    op: Op | None = None
+    value: str | None = None
 
 
 class ResourcePolicy(BaseModel):
-    description: Optional[str] = None
-    permissions: List[Permission]
+    description: str | None = None
+    permissions: list[Permission]
     effect: Effect
-    filter: Optional[List[FilterItem]] = None
+    filter: list[FilterItem] | None = None
 
 
 class ResourcePolicyModel(BaseModel):
     resource: Resource
-    policies: List[ResourcePolicy]
+    policies: list[ResourcePolicy]

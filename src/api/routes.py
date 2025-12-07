@@ -4,7 +4,6 @@ This module implements all HTTP endpoints for the service.
 """
 
 import time
-from typing import Optional, Union
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -43,7 +42,7 @@ class PermissionCheckResponse(BaseModel):
 
     allowed: bool
     message: str
-    evaluation_details: Optional[dict] = None
+    evaluation_details: dict | None = None
 
 
 class ErrorResponse(BaseModel):
@@ -51,7 +50,7 @@ class ErrorResponse(BaseModel):
 
     error: str
     message: str
-    details: Optional[list[str]] = None
+    details: list[str] | None = None
 
 
 # -------------------------------------------------------------------------
@@ -210,7 +209,7 @@ async def get_resource_policy(
     },
 )
 async def create_resource_policy(
-    policy_input: Union[ResourcePolicyDocument, PolicyOptions] = Body(
+    policy_input: ResourcePolicyDocument | PolicyOptions = Body(
         ..., description="Either a complete policy document or simple policy options"
     ),
     repository: Repository = Depends(get_repository),

@@ -6,7 +6,6 @@ This module handles database connections for both SQLite (local) and PostgreSQL 
 import os
 import sqlite3
 from contextlib import contextmanager
-from typing import Optional
 
 
 class DatabaseConfig:
@@ -16,11 +15,11 @@ class DatabaseConfig:
         self,
         db_type: str = "sqlite",  # "sqlite" or "postgresql"
         sqlite_path: str = "data/permissions.db",
-        postgres_host: Optional[str] = None,
+        postgres_host: str | None = None,
         postgres_port: int = 5432,
-        postgres_user: Optional[str] = None,
-        postgres_password: Optional[str] = None,
-        postgres_database: Optional[str] = None,
+        postgres_user: str | None = None,
+        postgres_password: str | None = None,
+        postgres_database: str | None = None,
     ):
         self.db_type = db_type
         self.sqlite_path = sqlite_path
@@ -166,7 +165,7 @@ class DatabaseConnection:
 
 
 # Global database connection instance
-_db_connection: Optional[DatabaseConnection] = None
+_db_connection: DatabaseConnection | None = None
 
 
 def get_database() -> DatabaseConnection:

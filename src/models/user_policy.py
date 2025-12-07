@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -25,9 +24,9 @@ class Op(Enum):
 
 
 class Filter(BaseModel):
-    prop: Optional[str] = None
-    op: Optional[Op] = None
-    value: Optional[str] = None
+    prop: str | None = None
+    op: Op | None = None
+    value: str | None = None
 
 
 class Permission(Enum):
@@ -43,11 +42,11 @@ class Effect(Enum):
 
 
 class UserPolicy(BaseModel):
-    filters: Optional[List[Filter]] = None
-    description: Optional[str] = None
-    permissions: List[Permission]
+    filters: list[Filter] | None = None
+    description: str | None = None
+    permissions: list[Permission]
     effect: Effect
 
 
 class UserPolicyModel(BaseModel):
-    policies: List[UserPolicy]
+    policies: list[UserPolicy]

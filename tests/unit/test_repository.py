@@ -1,8 +1,7 @@
 """Unit tests for Repository (database layer)."""
 
 from src.models.common import Effect, Permission
-from src.models.policies import (ResourceInfo, ResourcePolicy,
-                                 ResourcePolicyDocument)
+from src.models.policies import ResourceInfo, ResourcePolicy, ResourcePolicyDocument
 
 
 class TestUserOperations:

@@ -5,12 +5,18 @@ whether a user has a specific permission on a resource.
 """
 
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from src.components.filter_engine import FilterEngine
 from src.models.common import Effect, Permission
-from src.models.entities import (Document, Project, ProjectMembership, Team,
-                                 TeamMembership, User)
+from src.models.entities import (
+    Document,
+    Project,
+    ProjectMembership,
+    Team,
+    TeamMembership,
+    User,
+)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 
@@ -18,7 +24,7 @@ class EvaluationResult:
     """Result of a permission evaluation."""
 
     def __init__(
-        self, allowed: bool, message: str, matched_policies: Optional[list[str]] = None
+        self, allowed: bool, message: str, matched_policies: list[str] | None = None
     ):
         self.allowed = allowed
         self.message = message
@@ -36,12 +42,12 @@ class Evaluator:
         user: User,
         document: Document,
         permission: Permission,
-        resource_policy: Optional[ResourcePolicyDocument] = None,
-        user_policy: Optional[UserPolicyDocument] = None,
-        team: Optional[Team] = None,
-        project: Optional[Project] = None,
-        team_membership: Optional[TeamMembership] = None,
-        project_membership: Optional[ProjectMembership] = None,
+        resource_policy: ResourcePolicyDocument | None = None,
+        user_policy: UserPolicyDocument | None = None,
+        team: Team | None = None,
+        project: Project | None = None,
+        team_membership: TeamMembership | None = None,
+        project_membership: ProjectMembership | None = None,
     ) -> EvaluationResult:
         """Evaluate if a user has a specific permission on a document.
 
@@ -144,11 +150,11 @@ class Evaluator:
         self,
         user: User,
         document: Document,
-        team: Optional[Team] = None,
-        project: Optional[Project] = None,
-        team_membership: Optional[TeamMembership] = None,
-        project_membership: Optional[ProjectMembership] = None,
-    ) -> Dict[str, Any]:
+        team: Team | None = None,
+        project: Project | None = None,
+        team_membership: TeamMembership | None = None,
+        project_membership: ProjectMembership | None = None,
+    ) -> dict[str, Any]:
         """Build evaluation context from entities.
 
         Args:
@@ -184,7 +190,7 @@ class Evaluator:
     @staticmethod
     def extract_urn_components(
         resource_urn: str,
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None, str | None]:
         """Extract teamId, projectId, and docId from resource URN.
 
         Expected format: urn:resource:{teamId}:{projectId}:{docId}

@@ -5,11 +5,16 @@ This module provides data access methods for all entities in the system.
 
 import json
 from datetime import datetime
-from typing import Optional
 
 from src.database.connection import DatabaseConnection
-from src.models.entities import (Document, Project, ProjectMembership, Team,
-                                 TeamMembership, User)
+from src.models.entities import (
+    Document,
+    Project,
+    ProjectMembership,
+    Team,
+    TeamMembership,
+    User,
+)
 from src.models.policies import ResourcePolicyDocument, UserPolicyDocument
 
 
@@ -23,7 +28,7 @@ class Repository:
     # User operations
     # -------------------------------------------------------------------------
 
-    def get_user(self, user_id: str) -> Optional[User]:
+    def get_user(self, user_id: str) -> User | None:
         """Get a user by ID.
 
         Args:
@@ -51,7 +56,7 @@ class Repository:
     # Team operations
     # -------------------------------------------------------------------------
 
-    def get_team(self, team_id: str) -> Optional[Team]:
+    def get_team(self, team_id: str) -> Team | None:
         """Get a team by ID.
 
         Args:
@@ -79,7 +84,7 @@ class Repository:
     # Project operations
     # -------------------------------------------------------------------------
 
-    def get_project(self, project_id: str) -> Optional[Project]:
+    def get_project(self, project_id: str) -> Project | None:
         """Get a project by ID.
 
         Args:
@@ -111,7 +116,7 @@ class Repository:
     # Document operations
     # -------------------------------------------------------------------------
 
-    def get_document(self, document_id: str) -> Optional[Document]:
+    def get_document(self, document_id: str) -> Document | None:
         """Get a document by ID.
 
         Args:
@@ -160,9 +165,7 @@ class Repository:
     # Membership operations
     # -------------------------------------------------------------------------
 
-    def get_team_membership(
-        self, user_id: str, team_id: str
-    ) -> Optional[TeamMembership]:
+    def get_team_membership(self, user_id: str, team_id: str) -> TeamMembership | None:
         """Get team membership for a user.
 
         Args:
@@ -192,7 +195,7 @@ class Repository:
 
     def get_project_membership(
         self, user_id: str, project_id: str
-    ) -> Optional[ProjectMembership]:
+    ) -> ProjectMembership | None:
         """Get project membership for a user.
 
         Args:
@@ -224,7 +227,7 @@ class Repository:
     # Policy operations
     # -------------------------------------------------------------------------
 
-    def get_resource_policy(self, resource_id: str) -> Optional[ResourcePolicyDocument]:
+    def get_resource_policy(self, resource_id: str) -> ResourcePolicyDocument | None:
         """Get resource policy document by resource ID.
 
         Args:
@@ -300,7 +303,7 @@ class Repository:
         self.db.commit()
         return True
 
-    def get_user_policy(self, user_id: str) -> Optional[UserPolicyDocument]:
+    def get_user_policy(self, user_id: str) -> UserPolicyDocument | None:
         """Get user policy document by user ID.
 
         Args:

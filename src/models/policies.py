@@ -1,7 +1,5 @@
 """Policy models for the permissions system."""
 
-from typing import List, Optional
-
 from pydantic import BaseModel, Field
 
 from .common import Effect, Filter, Permission
@@ -10,13 +8,13 @@ from .common import Effect, Filter, Permission
 class UserPolicy(BaseModel):
     """Individual user policy with filters and permissions."""
 
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description="Human-readable policy description"
     )
-    filter: Optional[List[Filter]] = Field(
+    filter: list[Filter] | None = Field(
         None, description="Conditions that must be met for this policy to apply"
     )
-    permissions: List[Permission] = Field(
+    permissions: list[Permission] = Field(
         ..., description="List of permissions this policy grants/denies"
     )
     effect: Effect = Field(
@@ -30,7 +28,7 @@ class UserPolicy(BaseModel):
 class UserPolicyDocument(BaseModel):
     """Complete user policy document containing all policies for a user."""
 
-    policies: List[UserPolicy] = Field(..., description="List of user policies")
+    policies: list[UserPolicy] = Field(..., description="List of user policies")
 
     class Config:
         use_enum_values = True
@@ -52,13 +50,13 @@ class ResourceInfo(BaseModel):
 class ResourcePolicy(BaseModel):
     """Individual resource policy with filters and permissions."""
 
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description="Human-readable policy description"
     )
-    filter: Optional[List[Filter]] = Field(
+    filter: list[Filter] | None = Field(
         None, description="Conditions that must be met for this policy to apply"
     )
-    permissions: List[Permission] = Field(
+    permissions: list[Permission] = Field(
         ..., description="List of permissions this policy grants/denies"
     )
     effect: Effect = Field(
@@ -73,7 +71,7 @@ class ResourcePolicyDocument(BaseModel):
     """Complete resource policy document containing resource info and policies."""
 
     resource: ResourceInfo = Field(..., description="Resource information")
-    policies: List[ResourcePolicy] = Field(..., description="List of resource policies")
+    policies: list[ResourcePolicy] = Field(..., description="List of resource policies")
 
     class Config:
         use_enum_values = True
